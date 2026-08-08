@@ -238,3 +238,158 @@ h1 {
   }
 }
 
+/* ---------------------------------------------------------------
+   Reusable content-panel components (stat chips, nutrient bars,
+   relationship cards). Shared across pages so step content stays
+   visually consistent.
+---------------------------------------------------------------- */
+
+.stat-strip {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 36px;
+  flex-wrap: wrap;
+}
+
+.stat-chip {
+  padding: 14px 22px;
+  border-radius: 16px;
+  background: var(--cream);
+  min-width: 150px;
+}
+
+.stat-chip .stat-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.stat-chip .stat-value {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.nutrient-list {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.nutrient-row-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.nutrient-row-top .nutrient-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.nutrient-row-top .nutrient-value {
+  font-size: 13px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.progress-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--cream);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+}
+
+.progress-marker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+  background: rgba(23, 53, 82, 0.35);
+}
+
+.progress-scale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.badge--exceeded { background: #fbe3e0; color: var(--coral); }
+.badge--ok { background: #e2efe9; color: #4d8571; }
+
+.relationship-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.relationship-card {
+  padding: 22px 26px;
+  border-radius: 20px;
+  background: var(--cream);
+  border-left: 4px solid var(--coral);
+}
+
+.relationship-card h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.relationship-card p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.relationship-card .mortality-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: var(--rose);
+  color: #7f443d;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.panel-note {
+  margin: 28px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
