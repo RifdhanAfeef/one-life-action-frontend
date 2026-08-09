@@ -3,61 +3,133 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>One Life Action — Blank Template</title>
-    <link rel="stylesheet" href="../styles.css" />
+    <title>One Life Action — Your Swap</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
 
   <body>
     <div class="app">
-      <!-- Shared Header -->
       <header class="header">
         <div class="brand">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>One Life Action</span>
         </div>
-        <div class="step-pill">Step 1 of 6</div>
+        <div class="step-pill">Step 5 of 6</div>
       </header>
 
       <main class="page">
-        <!-- Left Side -->
         <section class="left-column">
-          <p class="eyebrow">1. Step Number</p>
+          <p class="eyebrow">5 · YOUR SWAP</p>
 
-          <h1>Text</h1>
+          <h1>Change the biggest pressure point first.</h1>
 
-          <p class="subtext">Sub Text</p>
+          <p class="subtext">
+            The recommender ranks your daily totals, finds the dish
+            contributing most to your priority nutrient, then looks up one
+            approved swap for it.
+          </p>
 
           <aside class="info-card info-card--yellow">
-            <span class="card-label">Text</span>
-            <strong>Text<br />Text</strong>
+            <span class="card-label">WHY THIS DISH</span>
+            <strong id="why-dish-text">Loading…</strong>
           </aside>
 
           <aside class="info-card info-card--rose">
-            <strong>Text<br />Text</strong>
+            <strong>
+              This is one controlled recommendation from the approved
+              swap table, not a generated suggestion.
+            </strong>
           </aside>
 
-          <!-- Back Button; Not Connected yet -->
-          <button class="back-button" type="button">← Back to ________</button>
+          <button class="back-button" type="button">
+            ← Back to health risk explanation
+          </button>
         </section>
 
-        <!-- Right Side Container -->
         <section class="right-column">
           <div class="content-panel">
-            <h2>Text</h2>
+            <h2>Your recommended swap</h2>
 
-            <!-- Add page-specific cards, forms or charts here. -->
+            <div class="stat-strip">
+              <div class="stat-chip">
+                <span class="stat-label">Priority nutrient</span>
+                <span class="stat-value" id="stat-priority-nutrient">—</span>
+              </div>
+              <div class="stat-chip">
+                <span class="stat-label">Contribution</span>
+                <span class="stat-value" id="stat-contribution">—</span>
+              </div>
+              <div class="stat-chip">
+                <span class="stat-label">Meal slot</span>
+                <span class="stat-value" id="stat-meal-slot">—</span>
+              </div>
+            </div>
+
+            <div class="relationship-list" id="swap-card-container"></div>
+
+            <p class="panel-note" id="no-swap-note" style="display: none">
+              No validated swap is currently available for this dish. We
+              won't invent a replacement — this is shown as-is.
+            </p>
           </div>
 
           <div class="next-row">
-            <!-- Visual placeholder only; no navigation is attached. -->
             <button class="next-button" type="button">
-              <span>---Next Button---</span>
+              <span>See the measurable effect</span>
               <span class="arrow" aria-hidden="true">→</span>
             </button>
           </div>
         </section>
       </main>
     </div>
+
+    <script>
+      async function getSwapRecommendation() {
+      }
+
+      const nutrientLabels = { sugar: "Sugar", satFat: "Saturated fat", sodium: "Sodium" };
+
+      function render(data) {
+        document.getElementById("stat-priority-nutrient").textContent =
+          nutrientLabels[data.priorityNutrient] || data.priorityNutrient;
+        document.getElementById("stat-contribution").textContent =
+          `${data.contribution}${data.unit}`;
+        document.getElementById("stat-meal-slot").textContent = data.mealSlot;
+
+        document.getElementById("why-dish-text").textContent =
+          `${data.dishName} (${data.mealSlot}) contributes the most ` +
+          `${(nutrientLabels[data.priorityNutrient] || data.priorityNutrient).toLowerCase()} ` +
+          `of your selected meals — ${data.contribution}${data.unit} on its own.`;
+
+        const container = document.getElementById("swap-card-container");
+        const noSwapNote = document.getElementById("no-swap-note");
+
+        if (!data.swap) {
+          container.innerHTML = "";
+          noSwapNote.style.display = "block";
+          return;
+        }
+
+        noSwapNote.style.display = "none";
+        container.innerHTML = `
+          <article class="relationship-card">
+            <h3>${data.swap.swapTo} instead of ${data.dishName}</h3>
+            <p>${data.swap.reason}</p>
+            <span class="mortality-tag">
+              −${data.swap.delta}${data.unit} ${(nutrientLabels[data.priorityNutrient] || "").toLowerCase()}
+            </span>
+          </article>
+        `;
+      }
+
+      getSwapRecommendation()
+        .then(render)
+        .catch((err) => {
+          document.getElementById("why-dish-text").textContent =
+            "Couldn't load your swap recommendation. Please try again.";
+          console.error(err);
+        });
+    </script>
   </body>
 </html>
 
