@@ -1,0 +1,377 @@
+const mealGrid = document.querySelector("#mealGrid");
+const selectionCount = document.querySelector("#selectionCount");
+const daySummaryList = document.querySelector("#daySummaryList");
+const selectionWarning = document.querySelector("#selectionWarning");
+const warningTitle = document.querySelector("#warningTitle");
+const warningMessage = document.querySelector("#warningMessage");
+const totalsButton = document.querySelector("#totalsButton");
+const backButton = document.querySelector("#backButton");
+const navigationStatus = document.querySelector("#navigationStatus");
+
+const mealSlots = [
+  {
+    id: "breakfast",
+    label: "Breakfast",
+    image: "../assets/breakfast.png",
+  },
+  {
+    id: "lunch",
+    label: "Lunch",
+    image: "../assets/lunch.png",
+  },
+  {
+    id: "tea",
+    label: "Tea",
+    image: "../assets/tea.png",
+  },
+  {
+    id: "dinner",
+    label: "Dinner",
+    image: "../assets/dinner.png",
+  },
+];
+
+/*
+ * Interface-only sample values.
+ * Later, replace getDishCatalogue() with the backend dishes endpoint while
+ * retaining this UI-friendly object shape.
+ */
+
+const mockDishCatalogue = [
+  {
+    id: 1,
+    name: "Roti Canai",
+    serving: "1 fixed standard serving",
+    energyKcal: 650,
+    sugarG: 18,
+    saturatedFatG: 7,
+    sodiumMg: 680,
+  },
+  {
+    id: 2,
+    name: "Nasi Lemak",
+    serving: "1 fixed standard serving",
+    energyKcal: 680,
+    sugarG: 12,
+    saturatedFatG: 6,
+    sodiumMg: 890,
+  },
+  {
+    id: 3,
+    name: "Teh Tarik",
+    serving: "1 fixed standard serving",
+    energyKcal: 180,
+    sugarG: 48,
+    saturatedFatG: 3,
+    sodiumMg: 120,
+  },
+  {
+    id: 4,
+    name: "Chicken Rice",
+    serving: "1 fixed standard serving",
+    energyKcal: 620,
+    sugarG: 5,
+    saturatedFatG: 5,
+    sodiumMg: 850,
+  },
+  {
+    id: 5,
+    name: "Char Kway Teow",
+    serving: "1 fixed standard serving",
+    energyKcal: 744,
+    sugarG: 8,
+    saturatedFatG: 8,
+    sodiumMg: 1200,
+  },
+  {
+    id: 6,
+    name: "Mee Goreng",
+    serving: "1 fixed standard serving",
+    energyKcal: 700,
+    sugarG: 10,
+    saturatedFatG: 7,
+    sodiumMg: 1100,
+  },
+  {
+    id: 7,
+    name: "Oatmeal",
+    serving: "1 fixed standard serving",
+    energyKcal: 250,
+    sugarG: 7,
+    saturatedFatG: 2,
+    sodiumMg: 180,
+  },
+  {
+    id: 8,
+    name: "Yong Tau Foo",
+    serving: "1 fixed standard serving",
+    energyKcal: 450,
+    sugarG: 6,
+    saturatedFatG: 2,
+    sodiumMg: 800,
+  },
+];
+
+const selections = new Map();
+let dishCatalogue = [];
+let warningHasBeenRequested = false;
+
+async function getDishCatalogue() {
+  // Backend integration seam:
+  // return fetch("http://localhost:3000/assessment/dishes").then(...);
+  return mockDishCatalogue;
+}
+
+function findDishByName(name) {
+  const normalisedName = name.trim().toLowerCase();
+
+  return dishCatalogue.find(
+    (dish) => dish.name.toLowerCase() === normalisedName,
+  );
+}
+
+function createSearchView(slot) {
+  const container = document.createElement("div");
+  container.className = "meal-card__empty";
+
+  const label = document.createElement("label");
+  label.htmlFor = `${slot.id}MealSearch`;
+  label.textContent = "Select a meal";
+
+  const searchWrap = document.createElement("div");
+  searchWrap.className = "meal-search-wrap";
+
+  const input = document.createElement("input");
+  input.className = "meal-search";
+  input.id = `${slot.id}MealSearch`;
+  input.type = "search";
+  input.placeholder = "Search";
+  input.autocomplete = "off";
+  input.setAttribute("list", `${slot.id}DishOptions`);
+  input.setAttribute("aria-describedby", `${slot.id}SearchHelp`);
+
+  const icon = document.createElement("span");
+  icon.className = "meal-search-icon";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = "⌕";
+
+  const datalist = document.createElement("datalist");
+  datalist.id = `${slot.id}DishOptions`;
+
+  dishCatalogue.forEach((dish) => {
+    const option = document.createElement("option");
+    option.value = dish.name;
+    datalist.appendChild(option);
+  });
+
+  const help = document.createElement("p");
+  help.className = "meal-search-help";
+  help.id = `${slot.id}SearchHelp`;
+  help.textContent = "Start typing, then choose a suggestion.";
+
+  function chooseExactMatch() {
+    const matchedDish = findDishByName(input.value);
+
+    if (!matchedDish) return false;
+
+    selections.set(slot.id, matchedDish);
+    renderMealCard(slot);
+    updateSummary();
+    updateWarningIfVisible();
+    return true;
+  }
+
+  input.addEventListener("input", () => {
+    help.classList.remove("is-error");
+    help.textContent = "Start typing, then choose a suggestion.";
+    chooseExactMatch();
+  });
+
+  input.addEventListener("change", () => {
+    if (chooseExactMatch()) return;
+
+    help.classList.add("is-error");
+    help.textContent = "Please choose a dish from the suggestions.";
+  });
+
+  searchWrap.append(input, icon, datalist);
+  container.append(label, searchWrap, help);
+  return container;
+}
+
+function createSelectedView(slot, dish) {
+  const container = document.createElement("div");
+  container.className = "meal-card__selected";
+
+  const main = document.createElement("div");
+  main.className = "selected-meal-main";
+
+  const image = document.createElement("img");
+  image.className = "meal-slot-image";
+  image.src = slot.image;
+  image.alt = `${slot.label} meal illustration`;
+
+  const copy = document.createElement("div");
+  copy.className = "selected-meal-copy";
+
+  const name = document.createElement("strong");
+  name.textContent = dish.name;
+
+  const serving = document.createElement("span");
+  serving.textContent = dish.serving;
+
+  const nutrients = document.createElement("ul");
+  nutrients.className = "nutrient-list";
+
+  [
+    `${dish.energyKcal} Kcal`,
+    `Sugar ${dish.sugarG}g`,
+    `S. Fat ${dish.saturatedFatG}g`,
+    `Sodium ${dish.sodiumMg}mg`,
+  ].forEach((value) => {
+    const item = document.createElement("li");
+    item.textContent = value;
+    nutrients.appendChild(item);
+  });
+
+  const changeButton = document.createElement("button");
+  changeButton.className = "change-meal-button";
+  changeButton.type = "button";
+  changeButton.setAttribute(
+    "aria-label",
+    `Replace ${dish.name} for ${slot.label}`,
+  );
+
+  const hiddenText = document.createElement("span");
+  hiddenText.textContent = "Change meal";
+  changeButton.appendChild(hiddenText);
+
+  changeButton.addEventListener("click", () => {
+    selections.delete(slot.id);
+    renderMealCard(slot);
+    updateSummary();
+    updateWarningIfVisible();
+
+    requestAnimationFrame(() => {
+      document.querySelector(`#${slot.id}MealSearch`)?.focus();
+    });
+  });
+
+  copy.append(name, serving);
+  main.append(image, copy);
+  container.append(main, nutrients, changeButton);
+  return container;
+}
+
+function renderMealCard(slot) {
+  let card = mealGrid.querySelector(`[data-slot="${slot.id}"]`);
+
+  if (!card) {
+    card = document.createElement("article");
+    card.className = "meal-card";
+    card.dataset.slot = slot.id;
+    mealGrid.appendChild(card);
+  }
+
+  const dish = selections.get(slot.id);
+  card.dataset.selected = String(Boolean(dish));
+  card.replaceChildren();
+
+  const slotLabel = document.createElement("strong");
+  slotLabel.className = "meal-card__slot";
+  slotLabel.textContent = slot.label;
+
+  card.append(slotLabel, dish ? createSelectedView(slot, dish) : createSearchView(slot));
+}
+
+function updateSummary() {
+  selectionCount.textContent = `${selections.size} of ${mealSlots.length}`;
+  daySummaryList.replaceChildren();
+
+  mealSlots.forEach((slot) => {
+    const row = document.createElement("div");
+    const term = document.createElement("dt");
+    const description = document.createElement("dd");
+
+    term.textContent = slot.label;
+    description.textContent = selections.get(slot.id)?.name ?? "–";
+
+    row.append(term, description);
+    daySummaryList.appendChild(row);
+  });
+}
+
+function getMissingSlots() {
+  return mealSlots.filter((slot) => !selections.has(slot.id));
+}
+
+function joinMealNames(labels) {
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return labels.join(" and ");
+
+  return `${labels.slice(0, -1).join(", ")} and ${labels.at(-1)}`;
+}
+
+function showMissingMealWarning() {
+  const missingSlots = getMissingSlots();
+
+  if (missingSlots.length === 0) {
+    selectionWarning.hidden = true;
+    return;
+  }
+
+  const missingNames = missingSlots.map((slot) => slot.label);
+  const joinedNames = joinMealNames(missingNames);
+  const verb = missingNames.length === 1 ? "is" : "are";
+
+  warningTitle.textContent = `${joinedNames} ${verb} still empty`;
+  warningMessage.textContent =
+    "Please ensure all four meals are selected before continuing.";
+  selectionWarning.hidden = false;
+}
+
+function updateWarningIfVisible() {
+  if (!warningHasBeenRequested) return;
+  showMissingMealWarning();
+}
+
+function saveSelectionsForNextPage() {
+  const selectedMeals = mealSlots.map((slot) => ({
+    slot: slot.id,
+    ...selections.get(slot.id),
+  }));
+
+  sessionStorage.setItem("oneLifeAction.selectedMeals", JSON.stringify(selectedMeals));
+}
+
+function handleTotalsRequest() {
+  warningHasBeenRequested = true;
+  navigationStatus.textContent = "";
+
+  const missingSlots = getMissingSlots();
+
+  if (missingSlots.length > 0) {
+    showMissingMealWarning();
+    document.querySelector(`#${missingSlots[0].id}MealSearch`)?.focus();
+    return;
+  }
+
+  selectionWarning.hidden = true;
+  saveSelectionsForNextPage();
+  navigationStatus.textContent =
+    "All four meals are selected. Daily totals navigation will be linked later.";
+}
+
+async function initialisePage() {
+  dishCatalogue = await getDishCatalogue();
+  mealSlots.forEach(renderMealCard);
+  updateSummary();
+}
+
+totalsButton.addEventListener("click", handleTotalsRequest);
+
+backButton.addEventListener("click", () => {
+  window.location.href = "./US-1.1.html";
+});
+
+initialisePage();

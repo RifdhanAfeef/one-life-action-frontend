@@ -3,61 +3,114 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>One Life Action — Blank Template</title>
-    <link rel="stylesheet" href="styles.css" />
+    <meta
+      name="description"
+      content="Select four daily meals and review their prototype nutrition information."
+    />
+    <title>One Life Action - Your Food</title>
+
+    <!-- Shared stylesheet -->
+    <link rel="stylesheet" href="../styles.css" />
+    <!-- Page specific stylesheet. -->
+    <link rel="stylesheet" href="../css/US-2.1.css" />
   </head>
 
   <body>
-    <div class="app">
-      <!-- Shared Header -->
-      <header class="header">
-        <div class="brand">
+    <div class="app us21-app" id="us21App">
+      <header class="header us21-header">
+        <a class="brand us21-brand" href="#" aria-label="One Life Action home">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>One Life Action</span>
-        </div>
-        <div class="step-pill">Step 1 of 6</div>
+        </a>
+
+        <div class="step-pill">Step 2 of 6</div>
       </header>
 
-      <main class="page">
-        <!-- Left Side -->
-        <section class="left-column">
-          <p class="eyebrow">1. Step Number</p>
+      <main class="us21-layout">
+        <section class="us21-intro" aria-labelledby="pageTitle">
+          <p class="us21-eyebrow">2 &middot; Your food</p>
 
-          <h1>Text</h1>
+          <h1 id="pageTitle">
+            The food that we love feeds those numbers.<br />
+            Here's how.
+          </h1>
 
-          <p class="subtext">Sub Text</p>
+          <p class="us21-subtext">
+            Not because one meal decides your future, but repeated choices can
+            influence risk factors connected to conditions seen in population
+            data.
+          </p>
 
-          <aside class="info-card info-card--yellow">
-            <span class="card-label">Text</span>
-            <strong>Text<br />Text</strong>
+          <aside class="us21-info-card us21-info-card--yellow">
+            <strong>What we compare</strong>
+            <p>Energy &middot; sugar &middot; saturated fat and sodium for the full day.</p>
           </aside>
 
-          <aside class="info-card info-card--rose">
-            <strong>Text<br />Text</strong>
+          <aside class="us21-info-card us21-info-card--rose">
+            <p>Choose one dish for each meal slot.</p>
+            <p>
+              Nutrition values are placeholders for interface testing and will
+              be replaced by the food API.
+            </p>
           </aside>
 
-          <!-- Back Button; Not Connected yet -->
-          <button class="back-button" type="button">← Back to ________</button>
+          <button class="us21-back-button" id="backButton" type="button">
+            <span aria-hidden="true">&larr;</span>
+            Back to mortality pattern
+          </button>
         </section>
 
-        <!-- Right Side Container -->
-        <section class="right-column">
-          <div class="content-panel">
-            <h2>Text</h2>
+        <section class="us21-meal-column" aria-labelledby="mealHeading">
+          <div class="us21-panel">
+            <h2 id="mealHeading">Choose your meals</h2>
 
-            <!-- Add page-specific cards, forms or charts here. -->
+            <div class="meal-workspace">
+              <div class="meal-grid" id="mealGrid"></div>
+
+              <aside class="day-summary" aria-labelledby="daySummaryHeading">
+                <div class="day-summary__top">
+                  <strong id="daySummaryHeading">Your day</strong>
+                  <output id="selectionCount">0 of 4</output>
+                  <span>Meal slots selected</span>
+                </div>
+
+                <dl class="day-summary__list" id="daySummaryList"></dl>
+              </aside>
+            </div>
+
+            <p class="meal-tip">* Select a chosen card again to replace its dish.</p>
           </div>
 
-          <div class="next-row">
-            <!-- Visual placeholder only; no navigation is attached. -->
-            <button class="next-button" type="button">
-              <span>---Next Button---</span>
-              <span class="arrow" aria-hidden="true">→</span>
+          <div class="us21-actions">
+            <div
+              class="selection-warning"
+              id="selectionWarning"
+              role="alert"
+              aria-live="assertive"
+              hidden
+            >
+              <span aria-hidden="true">&bull;</span>
+              <div>
+                <strong id="warningTitle"></strong>
+                <p id="warningMessage"></p>
+              </div>
+            </div>
+
+            <button class="us21-next-button" id="totalsButton" type="button">
+              <span>Show my daily totals</span>
+              <span class="us21-arrow" aria-hidden="true">&rarr;</span>
             </button>
           </div>
+
+          <p
+            class="navigation-status"
+            id="navigationStatus"
+            aria-live="polite"
+          ></p>
         </section>
       </main>
     </div>
+
+    <script type="module" src="../js/US-2.1.js"></script>
   </body>
 </html>
-
