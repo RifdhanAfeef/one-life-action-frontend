@@ -34,9 +34,9 @@ body {
 }
 
 .us22-app {
-  width: 100%;
-  min-height: 100vh;
-  margin: 0;
+  width: min(1600px, calc(100% - 32px));
+  min-height: calc(100vh - 32px);
+  margin: 16px auto;
   overflow: hidden;
   background: var(--cream);
 }
@@ -91,7 +91,7 @@ body {
 
 .us22-layout {
   display: grid;
-  grid-template-columns: minmax(300px, 360px) minmax(680px, 1fr);
+  grid-template-columns: minmax(300px, 350px) minmax(720px, 1fr);
   gap: clamp(54px, 7vw, 106px);
   min-height: 790px;
   padding: 48px clamp(32px, 5vw, 82px) 70px;
@@ -502,6 +502,12 @@ body {
 }
 
 @media (max-width: 650px) {
+  .us22-app {
+    width: 100%;
+    min-height: 100vh;
+    margin: 0;
+  }
+
   .us22-header {
     min-height: 72px;
     padding: 0 18px;
