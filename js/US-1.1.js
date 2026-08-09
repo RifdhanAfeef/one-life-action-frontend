@@ -26,11 +26,8 @@ const chartAgeBand = document.querySelector("#chartAgeBand");
 const mortalityBars = document.querySelector("#mortalityBars");
 const navigationStatus = document.querySelector("#navigationStatus");
 
-/* Later, replace getHealthContext() with a POST request to:
- *   /assessment/health-context
- * Keep the returned object in the same UI-friendly shape so the rendering
- * functions below do not need to change.
- */
+/*Later, replace getHealthContext() with a POST request to: /assessment/health-context*/
+
 const mortalityByAgeBand = {
   "18-29": [
     { cause: "Transport accidents", percentage: 24.1 },
@@ -112,17 +109,17 @@ function validateProfile(profile) {
     errors.push({ field: ageBandInput, message: "Select an age group." });
   }
 
-  if (!Number.isFinite(profile.heightCm) || profile.heightCm < 100 || profile.heightCm > 250) {
+  if (!Number.isFinite(profile.heightCm) || profile.heightCm < 100 || profile.heightCm > 300) {
     errors.push({
       field: heightInput,
-      message: "Enter a height between 100 cm and 250 cm.",
+      message: "Enter a height between 100 cm and 300 cm.",
     });
   }
 
-  if (!Number.isFinite(profile.weightKg) || profile.weightKg < 25 || profile.weightKg > 350) {
+  if (!Number.isFinite(profile.weightKg) || profile.weightKg < 15 || profile.weightKg > 700) {
     errors.push({
       field: weightInput,
-      message: "Enter a weight between 25 kg and 350 kg.",
+      message: "Enter a weight between 15 kg and 700 kg.",
     });
   }
 
@@ -158,6 +155,7 @@ function classifyBmi(bmi) {
  * Integration seam: this is the only function that needs to change when the
  * backend request/response contract is finalised.
  */
+
 async function getHealthContext(profile) {
   const bmi = calculateBmi(profile.heightCm, profile.weightKg);
 
@@ -302,7 +300,7 @@ patternButton.addEventListener("click", () => {
 });
 
 foodButton.addEventListener("click", () => {
-  navigationStatus.textContent = "Food-page navigation will be connected in a later integration task.";
+    window.location.href = "./US-2.1.html";
 });
 
 createPeopleGrid();
