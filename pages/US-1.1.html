@@ -3,61 +3,195 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>One Life Action — Blank Template</title>
+    <meta
+      name="description"
+      content="Explore a prototype age-band mortality pattern and BMI interface."
+    />
+    <title>One Life Action - Your Numbers</title>
+
+    <!-- Shared stylesheet -->
     <link rel="stylesheet" href="../styles.css" />
+    <!-- Page specific stylesheet -->
+    <link rel="stylesheet" href="../css/US-1.1.css" />
   </head>
 
   <body>
-    <div class="app">
-      <!-- Shared Header -->
-      <header class="header">
-        <div class="brand">
+    <div class="app us11-app" id="us11App" data-state="initial">
+      <header class="header us11-header">
+        <a class="brand us11-brand" href="#" aria-label="One Life Action home">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>One Life Action</span>
-        </div>
-        <div class="step-pill">Step 1 of 6</div>
+        </a>
+
+        <div class="step-pill" id="stepPill" hidden>Step 1 of 6</div>
       </header>
 
-      <main class="page">
-        <!-- Left Side -->
-        <section class="left-column">
-          <p class="eyebrow">1. Step Number</p>
+      <main class="us11-layout">
+        <section class="us11-intro" aria-labelledby="pageTitle">
+          <p class="us11-eyebrow" id="eyebrow">
+            100 lives &middot; one human pattern
+          </p>
 
-          <h1>Text</h1>
+          <h1 id="pageTitle">
+            Explore what Malaysia's mortality data can teach us about living.
+          </h1>
 
-          <p class="subtext">Sub Text</p>
+          <p class="us11-subtext">
+            Enter three simple details about yourself below to get started.
+          </p>
 
-          <aside class="info-card info-card--yellow">
-            <span class="card-label">Text</span>
-            <strong>Text<br />Text</strong>
-          </aside>
+          <form class="profile-form" id="profileForm" novalidate>
+            <div class="form-field form-field--full">
+              <label for="ageBand">Age group</label>
+              <select id="ageBand" name="ageBand" required>
+                <option value="">Select an age group</option>
+                <option value="18-29">18-29</option>
+                <option value="30-44">30-44</option>
+                <option value="45-59">45-59</option>
+                <option value="60+">60+</option>
+              </select>
+            </div>
 
-          <aside class="info-card info-card--rose">
-            <strong>Text<br />Text</strong>
-          </aside>
+            <div class="form-row">
+              <div class="form-field">
+                <label for="heightCm">Height</label>
+                <div class="unit-input">
+                  <input
+                    id="heightCm"
+                    name="heightCm"
+                    type="number"
+                    inputmode="decimal"
+                    min="100"
+                    max="250"
+                    step="0.1"
+                    placeholder="-"
+                    required
+                  />
+                  <span aria-hidden="true">cm</span>
+                </div>
+              </div>
 
-          <!-- Back Button; Not Connected yet -->
-          <button class="back-button" type="button">← Back to ________</button>
+              <div class="form-field">
+                <label for="weightKg">Weight</label>
+                <div class="unit-input">
+                  <input
+                    id="weightKg"
+                    name="weightKg"
+                    type="number"
+                    inputmode="decimal"
+                    min="25"
+                    max="350"
+                    step="0.1"
+                    placeholder="-"
+                    required
+                  />
+                  <span aria-hidden="true">kg</span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="form-errors"
+              id="formErrors"
+              role="alert"
+              aria-live="assertive"
+              hidden
+            ></div>
+
+            <aside class="prototype-disclaimer" id="prototypeDisclaimer">
+              <strong>This is not a personal risk calculator</strong>
+              <span>
+                We'll explore population patterns with care and then turn them
+                into one realistic action.
+              </span>
+            </aside>
+
+            <button class="primary-button begin-button" id="beginButton" type="submit">
+              Begin
+            </button>
+          </form>
+
+          <section class="bmi-result" id="bmiResult" aria-live="polite" hidden>
+            <div class="bmi-card">
+              <span class="bmi-label">Your BMI</span>
+              <output class="bmi-value" id="bmiValue">--</output>
+              <strong class="bmi-category" id="bmiCategory">--</strong>
+              <small id="bmiRange">BMI category range: --</small>
+            </div>
+
+            <aside class="bmi-note">
+              BMI is only a screening indicator and a reference point.<br />
+              It is not a diagnosis of your health quality.
+            </aside>
+          </section>
         </section>
 
-        <!-- Right Side Container -->
-        <section class="right-column">
-          <div class="content-panel">
-            <h2>Text</h2>
+        <section class="us11-visual-column" aria-label="Mortality visualisation">
+          <div class="visual-panel">
+            <section id="figuresView" aria-labelledby="figuresHeading">
+              <h2 id="figuresHeading">100 figures = 100 recorded lives</h2>
 
-            <!-- Add page-specific cards, forms or charts here. -->
+              <p class="mortality-summary" id="mortalitySummary" hidden>
+                Highest recorded cause for ages
+                <strong id="summaryAgeBand">--</strong>:
+                <strong class="coral-text" id="summaryCause">--</strong>,
+                <strong class="coral-text" id="summaryPercentage">--</strong>
+              </p>
+
+              <div
+                class="people-grid"
+                id="peopleGrid"
+                role="img"
+                aria-label="100 grey figures representing 100 recorded lives"
+              ></div>
+            </section>
+
+            <section id="chartView" aria-labelledby="chartHeading" hidden>
+              <h2 id="chartHeading">
+                Top recorded causes for ages <span id="chartAgeBand">--</span>
+              </h2>
+
+              <p class="chart-intro">
+                Population-level pattern for interface testing. It is not your
+                personal probability.
+              </p>
+
+              <div class="mortality-bars" id="mortalityBars"></div>
+
+              <aside class="meaning-card">
+                <strong>What this means</strong>
+                <p>
+                  These are population-level patterns within this age group.
+                  The pattern can guide reflection, but cannot calculate one
+                  person's future or personal health risk.
+                </p>
+              </aside>
+
+              <p class="next-hint">
+                Next: connect the pattern to a typical day of Malaysian meals.
+              </p>
+            </section>
           </div>
 
-          <div class="next-row">
-            <!-- Visual placeholder only; no navigation is attached. -->
-            <button class="next-button" type="button">
-              <span>---Next Button---</span>
-              <span class="arrow" aria-hidden="true">→</span>
+          <div class="visual-actions">
+            <button class="primary-button next-button" id="patternButton" type="button" hidden>
+              <span>See mortality pattern</span>
+              <span class="button-arrow" aria-hidden="true">&rarr;</span>
+            </button>
+
+            <!-- This stays intentionally unlinked during the static-page stage. -->
+            <button class="primary-button next-button" id="foodButton" type="button" hidden>
+              <span>Select my daily food</span>
+              <span class="button-arrow" aria-hidden="true">&rarr;</span>
             </button>
           </div>
+
+          <p class="navigation-status" id="navigationStatus" aria-live="polite"></p>
         </section>
       </main>
     </div>
+
+    <script type="module" src="../js/US-1.1.js"></script>
   </body>
 </html>
 
