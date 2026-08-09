@@ -26,12 +26,8 @@ const chartAgeBand = document.querySelector("#chartAgeBand");
 const mortalityBars = document.querySelector("#mortalityBars");
 const navigationStatus = document.querySelector("#navigationStatus");
 
-/*
- * STATIC PROTOTYPE DATA ONLY.
- *
- * Later, replace getHealthContext() with a POST request to:
+/* Later, replace getHealthContext() with a POST request to:
  *   /assessment/health-context
- *
  * Keep the returned object in the same UI-friendly shape so the rendering
  * functions below do not need to change.
  */
@@ -94,7 +90,6 @@ function enableUploadedPersonImage() {
     document.documentElement.classList.add("person-png-ready");
   });
 
-  // This path is relative to pages/US-1.1.html.
   personImage.src = "../assets/person.png";
 }
 
