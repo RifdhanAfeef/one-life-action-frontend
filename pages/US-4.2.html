@@ -3,61 +3,131 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>One Life Action — Blank Template</title>
-    <link rel="stylesheet" href="../styles.css" />
+    <title>One Life Action — Your Result</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
 
   <body>
     <div class="app">
-      <!-- Shared Header -->
       <header class="header">
         <div class="brand">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>One Life Action</span>
         </div>
-        <div class="step-pill">Step 1 of 6</div>
+        <div class="step-pill">Step 6 of 6</div>
       </header>
 
       <main class="page">
-        <!-- Left Side -->
         <section class="left-column">
-          <p class="eyebrow">1. Step Number</p>
+          <p class="eyebrow">6 · YOUR RESULT</p>
 
-          <h1>Text</h1>
+          <h1>One realistic change. A measurable new day.</h1>
 
-          <p class="subtext">Sub Text</p>
+          <p class="subtext">
+            This shows the recalculated total after applying the swap —
+            not a promise of a health outcome.
+          </p>
 
           <aside class="info-card info-card--yellow">
-            <span class="card-label">Text</span>
-            <strong>Text<br />Text</strong>
+            <span class="card-label">HONEST RESULT</span>
+            <strong>
+              Not a "Perfect Meal Plan,"<br />
+              but a realistic, measurable improvement.
+            </strong>
           </aside>
 
           <aside class="info-card info-card--rose">
-            <strong>Text<br />Text</strong>
+            <strong id="status-note-text">Loading…</strong>
           </aside>
 
-          <!-- Back Button; Not Connected yet -->
-          <button class="back-button" type="button">← Back to ________</button>
+          <button class="back-button" type="button">← Back to your swap</button>
         </section>
 
-        <!-- Right Side Container -->
         <section class="right-column">
           <div class="content-panel">
-            <h2>Text</h2>
+            <h2>Before vs after</h2>
 
-            <!-- Add page-specific cards, forms or charts here. -->
+            <div class="nutrient-list" id="priority-nutrient-row"></div>
+
+            <p class="panel-note">
+              Recalculated day total estimate — other nutrients update to
+              reflect the replacement dish.
+            </p>
+
+            <div class="stat-strip" id="other-nutrients-strip"></div>
           </div>
 
           <div class="next-row">
-            <!-- Visual placeholder only; no navigation is attached. -->
             <button class="next-button" type="button">
-              <span>---Next Button---</span>
+              <span>Download result card</span>
               <span class="arrow" aria-hidden="true">→</span>
             </button>
           </div>
         </section>
       </main>
     </div>
+
+    <script>
+      async function getSwapEffect() {
+      }
+
+      function render(data) {
+        const pctOfLimitAfter = Math.min((data.after / data.limit) * 100, 100);
+        const fillColor = data.stillAboveGuideline ? "var(--coral)" : "var(--sage)";
+
+        document.getElementById("priority-nutrient-row").innerHTML = `
+          <div>
+            <div class="nutrient-row-top">
+              <span class="nutrient-name">
+                ${data.nutrient}
+                <span class="badge ${data.stillAboveGuideline ? "badge--exceeded" : "badge--ok"}">
+                  ${data.stillAboveGuideline ? "Still above guideline" : "Within guideline"}
+                </span>
+              </span>
+              <span class="nutrient-value">
+                ${data.before}${data.unit} → ${data.after}${data.unit}
+              </span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill" style="width:${pctOfLimitAfter}%; background:${fillColor};"></div>
+              <div class="progress-marker"></div>
+            </div>
+            <div class="progress-scale">
+              <span>0${data.unit}</span>
+              <span>Guideline: ${data.limit}${data.unit}</span>
+            </div>
+          </div>
+        `;
+
+        document.getElementById("status-note-text").textContent = data.stillAboveGuideline
+          ? `Still above the ~${data.limit}${data.unit} guideline, but reduced by ` +
+            `${data.absoluteReduction}${data.unit} (${data.percentReduction.toFixed(1)}%). This is an ` +
+            `improvement, not a resolved issue.`
+          : `Now within the ~${data.limit}${data.unit} guideline — reduced by ` +
+            `${data.absoluteReduction}${data.unit} (${data.percentReduction.toFixed(1)}%).`;
+
+        document.getElementById("other-nutrients-strip").innerHTML = (data.otherNutrients || [])
+          .map((n) => {
+            const changed = n.before !== n.after;
+            return `
+              <div class="stat-chip">
+                <span class="stat-label">${n.label}</span>
+                <span class="stat-value">
+                  ${n.before}${n.unit}${changed ? ` → ${n.after}${n.unit}` : ""}
+                </span>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      getSwapEffect()
+        .then(render)
+        .catch((err) => {
+          document.getElementById("status-note-text").textContent =
+            "Couldn't load your result. Please try again.";
+          console.error(err);
+        });
+    </script>
   </body>
 </html>
-
