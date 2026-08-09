@@ -37,19 +37,15 @@ const navigationStatus = document.querySelector("#navigationStatus");
  * functions below do not need to change.
  */
 const mortalityByAgeBand = {
-  "18-29": [
-    { cause: "Transport accidents", percentage: 24.1 },
-    { cause: "Cancer", percentage: 8.1 },
-    { cause: "Ischaemic heart disease", percentage: 5.3 },
-    { cause: "Pneumonia", percentage: 4.9 },
-  ],
-  "30-44": [
+  // Temporary interface values; the backend will replace these using the
+  // database's exact age-band labels.
+  "15-40": [
     { cause: "Ischaemic heart disease", percentage: 17.8 },
     { cause: "Stroke", percentage: 14.0 },
     { cause: "Diabetes", percentage: 10.0 },
     { cause: "Cancer", percentage: 8.0 },
   ],
-  "45-59": [
+  "41-59": [
     { cause: "Ischaemic heart disease", percentage: 17.6 },
     { cause: "Cancer", percentage: 12.1 },
     { cause: "Stroke", percentage: 6.9 },
