@@ -1,13 +1,7 @@
-const APP_CONFIG = {
-  // Keep "mock" while the backend is unavailable. Change to "api" to connect.
-  dataMode: "mock",
-  apiBaseUrl: "http://localhost:3000",
-  healthRiskEndpoint: "/assessment/health-risk-explanation",
-};
-
 const STORAGE_KEYS = {
   selectedMeals: "oneLifeAction.selectedMeals",
   dailyAnalysis: "oneLifeAction.dailyAnalysis",
+  recommendation: "oneLifeAction.recommendation",
   healthRiskAnalysis: "oneLifeAction.healthRiskAnalysis",
 };
 
@@ -158,6 +152,11 @@ function readSelectedMeals() {
   return Array.isArray(meals) ? meals : [];
 }
 
+function readRecommendation() {
+  const recommendation = readStoredJson(STORAGE_KEYS.recommendation, null);
+  return recommendation && typeof recommendation === "object" ? recommendation : null;
+}
+
 function getFlaggedNutrients(analysis) {
   const nutrients = Array.isArray(analysis.nutrients) ? analysis.nutrients : [];
   const flagged = nutrients.filter(
@@ -223,110 +222,65 @@ function createMockHealthContext(analysis, meals) {
   };
 }
 
-function normaliseRelationship(item) {
-  return {
-    nutrientKey: item.nutrientKey ?? item.nutrient_key ?? item.key,
-    nutrientName: item.nutrientName ?? item.nutrient_name ?? item.name,
-    riskFactor:
-      item.riskFactor ?? item.risk_factor ?? item.associatedRiskFactor,
-    condition:
-      item.condition ?? item.conditionName ?? item.condition_name ?? item.healthCondition,
-    mortalityContext:
-      item.mortalityContext ??
-      item.mortality_context ??
-      item.causeOfDeath ??
-      item.cause_of_death,
-  };
-}
-
-function normaliseApiHealthContext(payload, analysis, meals) {
-  const responseData = payload.data ?? payload;
-  const relationshipData =
-    responseData.relationships ??
-    responseData.healthRiskRelationships ??
-    responseData.health_risk_relationships;
-
-  if (!Array.isArray(relationshipData)) {
-    throw new Error("The backend response did not include health-risk relationships.");
+/*
+ * The health-relationship data is not its own endpoint — it comes back
+ * inside the same POST /assessment/meal-assessment response that US-2.2
+ * already requested (recommendation.healthRelationship), so this page just
+ * reshapes what US-2.2 stored rather than calling the backend again.
+ */
+function getContributorFromRecommendation(recommendation) {
+  if (recommendation.recommendation) {
+    return {
+      mealSlot: recommendation.recommendation.mealSlot,
+      dishId: recommendation.recommendation.originalDish.dishId,
+      dishName: recommendation.recommendation.originalDish.name,
+    };
   }
 
-  const flaggedNutrients = getFlaggedNutrients(analysis);
-  const priorityNutrient =
-    responseData.priorityNutrient ??
-    responseData.priority_nutrient ??
-    getPriorityNutrient(analysis, flaggedNutrients);
+  if (recommendation.highestContributingMeal) {
+    return {
+      mealSlot: recommendation.highestContributingMeal.slot,
+      dishId: recommendation.highestContributingMeal.dish.dishId,
+      dishName: recommendation.highestContributingMeal.dish.name,
+    };
+  }
+
+  return null;
+}
+
+function buildContextFromRecommendation(recommendation) {
+  if (!recommendation.recommendationRequired) {
+    return {
+      priorityNutrient: null,
+      highestContributor: null,
+      relationships: [],
+      source: "NHMS 2023 / WHO",
+      disclaimer: recommendation.message ?? "No assessed nutrient exceeds its guideline value.",
+    };
+  }
+
+  const priorityNutrient = recommendation.priorityNutrient;
+  const relationships = (recommendation.healthRelationship ?? []).map((row) => ({
+    nutrientKey: priorityNutrient.key,
+    nutrientName: priorityNutrient.name,
+    riskFactor: row.mechanism,
+    condition: row.condition_name,
+    mortalityContext: row.cause_of_death ?? "Not separately recorded as a leading cause of death",
+  }));
 
   return {
     priorityNutrient,
-    highestContributor:
-      responseData.highestContributor ??
-      responseData.highest_contributor ??
-      findHighestContributor(meals, priorityNutrient?.key),
-    relationships: relationshipData.map(normaliseRelationship),
-    source:
-      responseData.source ??
-      responseData.sourceLabel ??
-      "Health-risk relationship source supplied by the backend.",
+    highestContributor: getContributorFromRecommendation(recommendation),
+    relationships,
+    source: recommendation.healthRelationship?.[0]?.source ?? "NHMS 2023 / WHO",
     disclaimer:
-      responseData.disclaimer ??
       "These links describe associations and do not calculate personal risk.",
   };
 }
 
-async function requestHealthRiskExplanation(analysis, meals) {
-  /*
-   * Backend integration point.
-   * Confirm the endpoint and field names with the backend teammate. Keeping
-   * this request and the response adapter isolated prevents API changes from
-   * affecting the page rendering code.
-   */
-  const flaggedNutrients = getFlaggedNutrients(analysis);
-  const priorityNutrient = getPriorityNutrient(analysis, flaggedNutrients);
-  const requestBody = {
-    priorityNutrient: priorityNutrient
-      ? {
-          key: priorityNutrient.key,
-          total: Number(priorityNutrient.total),
-          unit: priorityNutrient.unit,
-          guideline: Number(priorityNutrient.guideline),
-          ratio: Number(priorityNutrient.ratio),
-        }
-      : null,
-    exceededNutrients: flaggedNutrients.map((nutrient) => ({
-      key: nutrient.key,
-      total: Number(nutrient.total),
-      unit: nutrient.unit,
-      guideline: Number(nutrient.guideline),
-      ratio: Number(nutrient.ratio),
-    })),
-    dishes: meals.map((meal) => ({
-      dishId: meal.id,
-      mealSlot: meal.slot,
-      quantity: Number(meal.quantity ?? 1),
-    })),
-  };
-
-  const response = await fetch(
-    `${APP_CONFIG.apiBaseUrl}${APP_CONFIG.healthRiskEndpoint}`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(`The health-risk request failed (${response.status}).`);
-  }
-
-  return normaliseApiHealthContext(await response.json(), analysis, meals);
-}
-
-async function getHealthRiskContext(analysis, meals) {
-  if (APP_CONFIG.dataMode === "api") {
-    return requestHealthRiskExplanation(analysis, meals);
+async function getHealthRiskContext(analysis, meals, recommendation) {
+  if (recommendation) {
+    return buildContextFromRecommendation(recommendation);
   }
 
   return createMockHealthContext(analysis, meals);
@@ -472,6 +426,7 @@ async function initialisePage() {
 
   const storedAnalysis = readDailyAnalysis();
   const storedMeals = readSelectedMeals();
+  const storedRecommendation = readRecommendation();
   const isUsingStandaloneMock = !storedAnalysis;
   const analysis = storedAnalysis ?? MOCK_DAILY_ANALYSIS;
   const meals = storedMeals.length > 0 ? storedMeals : MOCK_SELECTED_MEALS;
@@ -482,7 +437,7 @@ async function initialisePage() {
   }
 
   try {
-    renderHealthContext(await getHealthRiskContext(analysis, meals));
+    renderHealthContext(await getHealthRiskContext(analysis, meals, storedRecommendation));
   } catch (error) {
     console.error(error);
     renderError(error);

@@ -1,13 +1,14 @@
 const APP_CONFIG = {
-  // Keep "mock" while the backend is unavailable. Change to "api" to connect.
-  dataMode: "mock",
-  apiBaseUrl: "http://localhost:3000",
+  // Live backend is deployed; "mock" now only powers offline UI development.
+  dataMode: "api",
+  apiBaseUrl: "https://one-life-action-backend.vercel.app",
   mealAssessmentEndpoint: "/assessment/meal-assessment",
 };
 
 const STORAGE_KEYS = {
   selectedMeals: "oneLifeAction.selectedMeals",
   dailyAnalysis: "oneLifeAction.dailyAnalysis",
+  recommendation: "oneLifeAction.recommendation",
 };
 
 const DEFAULT_GUIDELINES = {
@@ -22,44 +23,16 @@ const NUTRIENT_DEFINITIONS = [
   { key: "saturatedFatG", name: "Saturated fat", unit: "g" },
 ];
 
-/* Used only when US-2.2 is opened directly during interface development. */
+/*
+ * Used only when US-2.2 is opened directly, with no US-2.1 selection in
+ * session storage. These are real dish IDs from the live catalogue
+ * (GET /assessment/dishes) so the page still exercises the real API.
+ */
 const STANDALONE_MOCK_MEALS = [
-  {
-    slot: "breakfast",
-    id: 1,
-    name: "Roti Canai",
-    energyKcal: 650,
-    sugarG: 18,
-    saturatedFatG: 7,
-    sodiumMg: 680,
-  },
-  {
-    slot: "lunch",
-    id: 2,
-    name: "Nasi Lemak",
-    energyKcal: 680,
-    sugarG: 12,
-    saturatedFatG: 6,
-    sodiumMg: 890,
-  },
-  {
-    slot: "tea",
-    id: 3,
-    name: "Teh Tarik",
-    energyKcal: 180,
-    sugarG: 48,
-    saturatedFatG: 3,
-    sodiumMg: 120,
-  },
-  {
-    slot: "dinner",
-    id: 4,
-    name: "Chicken Rice",
-    energyKcal: 620,
-    sugarG: 5,
-    saturatedFatG: 5,
-    sodiumMg: 850,
-  },
+  { slot: "breakfast", id: 1191, name: "Roti canai (2 pc, with curry)", energyKcal: 1241, sugarG: 11.02, saturatedFatG: 20.17, sodiumMg: 3381 },
+  { slot: "lunch", id: 843, name: "Mala xiang guo (soup)", energyKcal: 1445, sugarG: 10.94, saturatedFatG: 32.4, sodiumMg: 5954 },
+  { slot: "tea", id: 777, name: "Korean spicy rice cake soup", energyKcal: 222, sugarG: 9.84, saturatedFatG: 4.48, sodiumMg: 2365 },
+  { slot: "dinner", id: 1227, name: "Sambal pomfret fish", energyKcal: 1345, sugarG: 23.05, saturatedFatG: 42.3, sodiumMg: 4230 },
 ];
 
 const resultsPanel = document.querySelector("#resultsPanel");
@@ -146,33 +119,35 @@ function analyseMealsLocally(meals) {
   return createAnalysis(calculateTotals(meals), DEFAULT_GUIDELINES);
 }
 
-function normaliseApiAssessment(payload) {
-  const responseData = payload.data ?? payload;
-  const totals = responseData.totals ?? responseData.dailyTotals;
-  const guidelines = responseData.guidelines ?? DEFAULT_GUIDELINES;
+/*
+ * The real backend already returns each nutrient fully compared against its
+ * guideline (name, total, guideline, unit, exceeded, ratio) instead of raw
+ * totals, so there is no local recalculation here — just reshape the keyed
+ * object into the array NUTRIENT_DEFINITIONS/createNutrientRow expect.
+ */
+function normaliseApiAssessment(dailyAnalysis) {
+  const nutrients = NUTRIENT_DEFINITIONS.map((definition) => ({
+    ...definition,
+    ...dailyAnalysis.nutrients[definition.key],
+  }));
 
-  if (!totals) {
-    throw new Error("The backend response did not include daily nutrient totals.");
-  }
+  const uniqueSources = [
+    ...new Set(nutrients.map((nutrient) => nutrient.source).filter(Boolean)),
+  ];
 
-  return createAnalysis(totals, guidelines, {
-    guidelineSource: responseData.guidelineSource,
-    disclaimer: responseData.disclaimer,
-  });
+  return {
+    totals: dailyAnalysis.totals,
+    nutrients,
+    priorityNutrient: dailyAnalysis.priorityNutrient,
+    flaggedCount: nutrients.filter((nutrient) => nutrient.exceeded).length,
+    guidelineSource: uniqueSources.join("; ") || "WHO / MOH daily guideline references.",
+    disclaimer: dailyAnalysis.disclaimer,
+  };
 }
 
 async function requestMealAssessment(meals) {
-  /*
-   * Backend integration point.
-   * Confirm the final request field names with the backend teammate. Keeping
-   * the mapping here prevents API naming changes from affecting the UI.
-   */
   const requestBody = {
-    dishes: meals.map((meal) => ({
-      dishId: meal.id,
-      quantity: Number(meal.quantity ?? 1),
-      mealSlot: meal.slot,
-    })),
+    meals: Object.fromEntries(meals.map((meal) => [meal.slot, meal.id])),
   };
 
   const response = await fetch(
@@ -186,11 +161,16 @@ async function requestMealAssessment(meals) {
     },
   );
 
-  if (!response.ok) {
-    throw new Error(`The meal assessment request failed (${response.status}).`);
+  const payload = await response.json();
+
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.message ?? `The meal assessment request failed (${response.status}).`);
   }
 
-  return normaliseApiAssessment(await response.json());
+  return {
+    analysis: normaliseApiAssessment(payload.dailyAnalysis),
+    recommendation: payload.recommendation,
+  };
 }
 
 async function getDailyAnalysis(meals) {
@@ -198,7 +178,7 @@ async function getDailyAnalysis(meals) {
     return requestMealAssessment(meals);
   }
 
-  return analyseMealsLocally(meals);
+  return { analysis: analyseMealsLocally(meals), recommendation: null };
 }
 
 function formatNumber(value, maximumFractionDigits = 1) {
@@ -288,11 +268,17 @@ function createNutrientRow(nutrient, priorityKey) {
   return row;
 }
 
-function saveAnalysisForNextPage(analysis) {
+function saveAnalysisForNextPage(analysis, recommendation) {
   sessionStorage.setItem(STORAGE_KEYS.dailyAnalysis, JSON.stringify(analysis));
+
+  if (recommendation) {
+    sessionStorage.setItem(STORAGE_KEYS.recommendation, JSON.stringify(recommendation));
+  } else {
+    sessionStorage.removeItem(STORAGE_KEYS.recommendation);
+  }
 }
 
-function renderAnalysis(analysis) {
+function renderAnalysis(analysis, recommendation) {
   const priorityKey = analysis.priorityNutrient?.key ?? null;
 
   energyValue.textContent = formatNumber(Math.round(analysis.totals.energyKcal), 0);
@@ -319,7 +305,7 @@ function renderAnalysis(analysis) {
     priorityCard.hidden = true;
   }
 
-  saveAnalysisForNextPage(analysis);
+  saveAnalysisForNextPage(analysis, recommendation);
   loadingMessage.hidden = true;
   analysisContent.hidden = false;
   analysisError.hidden = true;
@@ -349,7 +335,8 @@ async function initialisePage() {
   }
 
   try {
-    renderAnalysis(await getDailyAnalysis(meals));
+    const { analysis, recommendation } = await getDailyAnalysis(meals);
+    renderAnalysis(analysis, recommendation);
   } catch (error) {
     console.error(error);
     renderError(error);
