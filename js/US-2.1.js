@@ -116,16 +116,46 @@ const selections = new Map();
 let dishCatalogue = [];
 let warningHasBeenRequested = false;
 
+const DISHES_ENDPOINT = "https://one-life-action-backend.vercel.app/assessment/dishes";
+
 async function getDishCatalogue() {
-  // Backend integration seam:
-  // return fetch("http://localhost:3000/assessment/dishes").then(...);
-  return mockDishCatalogue;
+  try {
+    const response = await fetch(DISHES_ENDPOINT);
+    const payload = await response.json();
+
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.message ?? `Could not load the dish catalogue (${response.status}).`);
+    }
+
+    return payload.dishes.map((dish) => ({
+      id: dish.dishId,
+      name: dish.name,
+      serving: dish.servingDescription,
+      mealSlot: dish.mealSlot,
+      energyKcal: dish.energyKcal,
+      sugarG: dish.sugarG,
+      saturatedFatG: dish.saturatedFatG,
+      sodiumMg: dish.sodiumMg,
+    }));
+  } catch (error) {
+    console.error("Falling back to sample dishes; the live catalogue could not be loaded.", error);
+    navigationStatus.textContent =
+      "Showing a small sample dish list because the live catalogue could not be loaded.";
+    return mockDishCatalogue;
+  }
 }
 
-function findDishByName(name) {
+/* Dishes tagged "any" (e.g. drinks) are offered for every meal slot. */
+function getDishesForSlot(slotId) {
+  return dishCatalogue.filter(
+    (dish) => !dish.mealSlot || dish.mealSlot === slotId || dish.mealSlot === "any",
+  );
+}
+
+function findDishByName(name, slotId) {
   const normalisedName = name.trim().toLowerCase();
 
-  return dishCatalogue.find(
+  return getDishesForSlot(slotId).find(
     (dish) => dish.name.toLowerCase() === normalisedName,
   );
 }
@@ -158,7 +188,7 @@ function createSearchView(slot) {
   const datalist = document.createElement("datalist");
   datalist.id = `${slot.id}DishOptions`;
 
-  dishCatalogue.forEach((dish) => {
+  getDishesForSlot(slot.id).forEach((dish) => {
     const option = document.createElement("option");
     option.value = dish.name;
     datalist.appendChild(option);
@@ -170,7 +200,7 @@ function createSearchView(slot) {
   help.textContent = "Start typing, then choose a suggestion.";
 
   function chooseExactMatch() {
-    const matchedDish = findDishByName(input.value);
+    const matchedDish = findDishByName(input.value, slot.id);
 
     if (!matchedDish) return false;
 
