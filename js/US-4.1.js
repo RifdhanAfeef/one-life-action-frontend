@@ -276,21 +276,98 @@ function buildMockRecommendation(analysis, meals, healthContext) {
   };
 }
 
-/*
- * The swap and its impact are not their own endpoint — both come back inside
- * the same POST /assessment/meal-assessment response that US-2.2 already
- * requested (recommendation.recommendation / .impact / .revisedTotals), so
- * this page reshapes what US-2.2 stored instead of calling the backend again.
- * The backend returns at most one approved swap, so it is rendered as a
- * single pre-selected option in the existing options list.
- */
-function buildRecommendationFromApi(recommendation, analysis, meals) {
-  const priorityNutrient = normalisePriorityNutrient(recommendation.priorityNutrient);
-  const highestContributor = priorityNutrient
-    ? findHighestContributor(meals, priorityNutrient.key)
-    : null;
+function getApiSwapRecords(recommendation) {
+  if (Array.isArray(recommendation)) return recommendation;
 
-  if (!recommendation.recommendationRequired) {
+  const records =
+    recommendation?.recommendations ?? recommendation?.recommendation;
+  if (Array.isArray(records)) return records;
+  return records && typeof records === "object" ? [records] : [];
+}
+
+function inferNutrientKey(...values) {
+  const description = values.filter(Boolean).join(" ").toLowerCase();
+
+  if (description.includes("saturated fat")) return "saturatedFatG";
+  if (description.includes("sodium")) return "sodiumMg";
+  if (description.includes("sugar")) return "sugarG";
+  return null;
+}
+
+function getApiPriorityNutrient(recommendation, swaps, analysis) {
+  const suppliedPriority = Array.isArray(recommendation)
+    ? null
+    : recommendation?.priorityNutrient;
+  const analysisPriority = analysis?.priorityNutrient;
+  const firstSwap = swaps[0];
+  const priority = normalisePriorityNutrient(
+    suppliedPriority ?? analysisPriority,
+  );
+
+  if (priority?.key) return priority;
+
+  const key = inferNutrientKey(
+    priority?.name,
+    firstSwap?.reason,
+    firstSwap?.explanation,
+    firstSwap?.approxReduction,
+  );
+  if (!key) return priority;
+
+  const meta = NUTRIENT_META[key];
+  const impact = firstSwap?.impact ?? {};
+  return {
+    ...priority,
+    key,
+    name: priority?.name ?? meta.name,
+    unit: priority?.unit ?? impact.unit ?? meta.unit,
+    total: Number(priority?.total || impact.originalTotal || 0),
+    guideline: Number(priority?.guideline || impact.guideline || 0),
+    ratio: Number(
+      priority?.ratio ||
+        (impact.guideline
+          ? Number(impact.originalTotal || 0) / Number(impact.guideline)
+          : 0),
+    ),
+  };
+}
+
+
+function buildRecommendationFromApi(recommendation, analysis, meals) {
+  const swaps = getApiSwapRecords(recommendation);
+  const priorityNutrient = getApiPriorityNutrient(
+    recommendation,
+    swaps,
+    analysis,
+  );
+  const firstSwap = swaps[0];
+  const suppliedContributor = Array.isArray(recommendation)
+    ? null
+    : recommendation.highestContributingMeal;
+  const contributorDish =
+    firstSwap?.originalDish ?? suppliedContributor?.dish ?? null;
+  const contributorSlot =
+    firstSwap?.mealSlot ?? suppliedContributor?.slot ?? null;
+  const highestContributor = contributorDish
+    ? {
+        dishId: contributorDish.dishId,
+        dishName: contributorDish.name,
+        mealSlot: contributorSlot,
+        amount: Number(
+          meals.find(
+            (meal) =>
+              Number(meal.id) === Number(contributorDish.dishId),
+          )?.[priorityNutrient?.key] ?? 0,
+        ),
+      }
+    : priorityNutrient
+      ? findHighestContributor(meals, priorityNutrient.key)
+      : null;
+
+  if (
+    !Array.isArray(recommendation) &&
+    recommendation.recommendationRequired === false
+  ) {
     return {
       priorityNutrient: null,
       highestContributor: null,
@@ -300,7 +377,7 @@ function buildRecommendationFromApi(recommendation, analysis, meals) {
     };
   }
 
-  if (!recommendation.swapAvailable || !recommendation.recommendation) {
+  if (swaps.length === 0) {
     return {
       priorityNutrient,
       highestContributor,
@@ -310,26 +387,45 @@ function buildRecommendationFromApi(recommendation, analysis, meals) {
     };
   }
 
-  const swap = recommendation.recommendation;
-  const reduction = Math.abs(recommendation.impact?.absoluteReduction ?? 0);
-
-  const option = {
-    id: String(swap.swapId),
-    fromDishId: swap.originalDish.dishId,
-    fromDishName: swap.originalDish.name,
-    toDishId: swap.replacementDish.dishId,
-    toDishName: swap.replacementDish.name,
-    mealSlot: swap.mealSlot,
-    reason: swap.explanation ?? swap.reason,
-    nutrientDelta: priorityNutrient ? { [priorityNutrient.key]: -reduction } : {},
-    afterTotals: recommendation.revisedTotals ?? analysis.totals,
-  };
-
   return {
     priorityNutrient,
     highestContributor,
     beforeTotals: analysis.totals,
-    options: [option],
+    options: swaps.map((swap) => {
+      const reduction = Math.abs(Number(swap.impact?.absoluteReduction ?? 0));
+      const originalDish =
+        swap.originalDish ?? suppliedContributor?.dish ?? null;
+      const mealSlot = swap.mealSlot ?? suppliedContributor?.slot ?? null;
+      const nutrientDelta =
+        priorityNutrient?.key && reduction > 0
+          ? { [priorityNutrient.key]: -reduction }
+          : {};
+      const hasRevisedTotals =
+        swap.revisedTotals &&
+        typeof swap.revisedTotals === "object" &&
+        Object.keys(swap.revisedTotals).length > 0;
+
+      return {
+        id: String(swap.swapId),
+        fromDishId: originalDish?.dishId,
+        fromDishName: originalDish?.name ?? "Selected dish",
+        toDishId: swap.replacementDish?.dishId,
+        toDishName: swap.replacementDish?.name ?? "Approved replacement",
+        mealSlot,
+        reason:
+          swap.explanation ??
+          swap.reason ??
+          `A database-approved replacement for ${originalDish?.name ?? "the selected dish"}.`,
+        explanation: swap.explanation,
+        approxReduction: swap.approxReduction,
+        realismLevel: swap.realismLevel,
+        impact: swap.impact,
+        nutrientDelta,
+        afterTotals: hasRevisedTotals
+          ? swap.revisedTotals
+          : totalAfterDelta(analysis.totals, nutrientDelta),
+      };
+    }),
     source: "Approved swap recommendation from the backend's swap table.",
   };
 }
@@ -343,6 +439,8 @@ async function getSwapRecommendation(analysis, meals, healthContext, recommendat
 }
 
 function getImpactText(option, priorityNutrient) {
+  if (option.approxReduction) return option.approxReduction;
+
   const nutrientKey = priorityNutrient?.key;
   const meta = NUTRIENT_META[nutrientKey] ?? {
     name: priorityNutrient?.name ?? "Nutrient",

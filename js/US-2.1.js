@@ -31,11 +31,6 @@ const mealSlots = [
   },
 ];
 
-/*
- * Interface-only sample values.
- * Later, replace getDishCatalogue() with the backend dishes endpoint while
- * retaining this UI-friendly object shape.
- */
 
 const mockDishCatalogue = [
   {
@@ -145,7 +140,7 @@ async function getDishCatalogue() {
   }
 }
 
-/* Dishes tagged "any" (e.g. drinks) are offered for every meal slot. */
+
 function getDishesForSlot(slotId) {
   return dishCatalogue.filter(
     (dish) => !dish.mealSlot || dish.mealSlot === slotId || dish.mealSlot === "any",
