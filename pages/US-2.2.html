@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>One Life Action — Blank Template</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>One Life Action — Your Daily Nutrient Totals</title>
+    <link rel="stylesheet" href="../styles.css" />
   </head>
 
   <body>
@@ -15,49 +15,151 @@
           <span class="brand-dot" aria-hidden="true"></span>
           <span>One Life Action</span>
         </div>
-        <div class="step-pill">Step 1 of 6</div>
+        <div class="step-pill">Step 3 of 6</div>
       </header>
 
       <main class="page">
         <!-- Left Side -->
         <section class="left-column">
-          <p class="eyebrow">1. Step Number</p>
+          <p class="eyebrow">3. Nutrient Totals</p>
 
-          <h1>Text</h1>
+          <h1>Your Daily Nutrient Totals</h1>
 
-          <p class="subtext">Sub Text</p>
+          <p class="subtext">
+            Here's how the meals you picked add up against WHO / MOH daily
+            guideline limits for sugar, saturated fat and sodium.
+          </p>
 
           <aside class="info-card info-card--yellow">
-            <span class="card-label">Text</span>
-            <strong>Text<br />Text</strong>
+            <span class="card-label">Priority Nutrient</span>
+            <strong id="priorityNutrientText">Calculating…</strong>
           </aside>
 
           <aside class="info-card info-card--rose">
-            <strong>Text<br />Text</strong>
+            <strong id="disclaimerText">
+              These guideline values are general reference values and are
+              not personalised medical advice.
+            </strong>
           </aside>
 
           <!-- Back Button; Not Connected yet -->
-          <button class="back-button" type="button">← Back to ________</button>
+          <button class="back-button" type="button">← Back to Meal Selection</button>
         </section>
 
         <!-- Right Side Container -->
         <section class="right-column">
           <div class="content-panel">
-            <h2>Text</h2>
+            <h2>Today's Totals vs Guidelines</h2>
 
-            <!-- Add page-specific cards, forms or charts here. -->
+            <div class="stat-strip">
+              <div class="stat-chip">
+                <span class="stat-label">Total Energy</span>
+                <span class="stat-value" id="energyValue">–</span>
+              </div>
+            </div>
+
+            <div class="nutrient-list" id="nutrientList">
+              <!-- Nutrient rows are rendered here by js/nutrientAnalysis.js -->
+            </div>
+
+            <p class="panel-note">
+              Guideline values follow WHO / MOH reference limits for a
+              2,000 kcal adult diet. The marker on each bar shows where the
+              daily guideline sits.
+            </p>
           </div>
 
           <div class="next-row">
             <!-- Visual placeholder only; no navigation is attached. -->
             <button class="next-button" type="button">
-              <span>---Next Button---</span>
+              <span>See the Health Relationship</span>
               <span class="arrow" aria-hidden="true">→</span>
             </button>
           </div>
         </section>
       </main>
     </div>
+
+    <script type="module">
+      import { getState, updateState } from "../js/state.js";
+      import { analyseMeals } from "../js/nutrientAnalysis.js";
+      import { DEFAULT_MEALS } from "../js/mockData.js";
+
+      const NUTRIENT_ORDER = ["sugarG", "saturatedFatG", "sodiumMg"];
+
+      function severityColor(ratio) {
+        if (ratio <= 1) return "#4d8571";
+        if (ratio <= 1.5) return "#f0a92e";
+        return "#e35c50";
+      }
+
+      function formatAmount(value, unit) {
+        return `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unit}`;
+      }
+
+      function renderNutrientRow(nutrient) {
+        const row = document.createElement("div");
+        row.className = "nutrient-row";
+
+        const color = severityColor(nutrient.ratio);
+        const widthPct = Math.min(nutrient.ratio, 2) * 50;
+        const badgeClass = nutrient.exceeded ? "badge--exceeded" : "badge--ok";
+        const badgeLabel = nutrient.exceeded ? "Exceeded" : "Within Limit";
+
+        row.innerHTML = `
+          <div class="nutrient-row-top">
+            <span class="nutrient-name">
+              ${nutrient.name}
+              <span class="badge ${badgeClass}">${badgeLabel}</span>
+            </span>
+            <span class="nutrient-value">
+              ${formatAmount(nutrient.total, nutrient.unit)}
+              ${nutrient.exceeded ? ` · ${nutrient.ratio}× guideline` : ""}
+            </span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${widthPct}%; background:${color};"></div>
+            <div class="progress-marker"></div>
+          </div>
+          <div class="progress-scale">
+            <span>0</span>
+            <span>Guideline: ${formatAmount(nutrient.guideline, nutrient.unit)}</span>
+            <span>${formatAmount(nutrient.guideline * 2, nutrient.unit)}</span>
+          </div>
+        `;
+
+        return row;
+      }
+
+      function render(analysis) {
+        document.getElementById("energyValue").textContent =
+          formatAmount(Math.round(analysis.totals.energyKcal), "kcal");
+
+        const list = document.getElementById("nutrientList");
+        list.innerHTML = "";
+        NUTRIENT_ORDER.forEach((key) => {
+          list.appendChild(renderNutrientRow(analysis.nutrients[key]));
+        });
+
+        const priorityCard = document.getElementById("priorityNutrientText");
+        if (analysis.priorityNutrient) {
+          priorityCard.innerHTML =
+            `${analysis.priorityNutrient.name}<br>` +
+            `${analysis.priorityNutrient.ratio}× the daily guideline`;
+        } else {
+          priorityCard.innerHTML = "No nutrient exceeded its guideline today.";
+        }
+
+        document.getElementById("disclaimerText").textContent = analysis.disclaimer;
+      }
+
+      const state = getState();
+      const meals = state.meals || DEFAULT_MEALS;
+      const analysis = analyseMeals(meals);
+
+      updateState({ meals, dailyAnalysis: analysis });
+
+      render(analysis);
+    </script>
   </body>
 </html>
-
