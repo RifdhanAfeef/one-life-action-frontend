@@ -3,163 +3,106 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>One Life Action — Your Daily Nutrient Totals</title>
+    <meta
+      name="description"
+      content="Compare the nutrients in selected meals with daily guideline references."
+    />
+    <title>One Life Action - Your Daily Totals</title>
+
+    <!-- Shared stylesheet -->
     <link rel="stylesheet" href="../styles.css" />
+    <!-- Page specific stylesheet -->
+    <link rel="stylesheet" href="../css/US-2.2.css" />
   </head>
 
   <body>
-    <div class="app">
-      <!-- Shared Header -->
-      <header class="header">
-        <div class="brand">
+    <div class="app us22-app" id="us22App">
+      <header class="header us22-header">
+        <a class="brand us22-brand" href="#" aria-label="One Life Action home">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>One Life Action</span>
-        </div>
+        </a>
+
         <div class="step-pill">Step 3 of 6</div>
       </header>
 
-      <main class="page">
-        <!-- Left Side -->
-        <section class="left-column">
-          <p class="eyebrow">3. Nutrient Totals</p>
+      <main class="us22-layout">
+        <section class="us22-intro" aria-labelledby="pageTitle">
+          <p class="us22-eyebrow">3 &middot; Daily total</p>
 
-          <h1>Your Daily Nutrient Totals</h1>
+          <h1 id="pageTitle">Your meals become one daily picture.</h1>
 
-          <p class="subtext">
-            Here's how the meals you picked add up against WHO / MOH daily
-            guideline limits for sugar, saturated fat and sodium.
+          <p class="us22-subtext">
+            We sum the nutrients in the meals you selected and compare the
+            totals with cited daily guideline references.
           </p>
 
-          <aside class="info-card info-card--yellow">
-            <span class="card-label">Priority Nutrient</span>
-            <strong id="priorityNutrientText">Calculating…</strong>
+          <aside class="priority-card" id="priorityCard" hidden>
+            <strong>Priority nutrient</strong>
+            <span id="priorityNutrient">&ndash;</span>
+            <p id="priorityExplanation"></p>
           </aside>
 
-          <aside class="info-card info-card--rose">
-            <strong id="disclaimerText">
-              These guideline values are general reference values and are
-              not personalised medical advice.
-            </strong>
+          <aside class="us22-disclaimer" id="disclaimerCard">
+            These guideline values are general references and are not
+            personalised medical advice.
           </aside>
 
-          <!-- Back Button; Not Connected yet -->
-          <button class="back-button" type="button">← Back to Meal Selection</button>
+          <a class="us22-back-button" href="./US-2.1.html">
+            <span aria-hidden="true">&larr;</span>
+            Back to meal selection
+          </a>
         </section>
 
-        <!-- Right Side Container -->
-        <section class="right-column">
-          <div class="content-panel">
-            <h2>Today's Totals vs Guidelines</h2>
-
-            <div class="stat-strip">
-              <div class="stat-chip">
-                <span class="stat-label">Total Energy</span>
-                <span class="stat-value" id="energyValue">–</span>
+        <section class="us22-results-column" aria-labelledby="totalsHeading">
+          <div class="us22-panel" id="resultsPanel" aria-busy="true">
+            <div class="panel-heading">
+              <div>
+                <h2 id="totalsHeading">Your day totals</h2>
+                <p>Warnings appear only when a selected total is above its guideline.</p>
               </div>
             </div>
 
-            <div class="nutrient-list" id="nutrientList">
-              <!-- Nutrient rows are rendered here by js/nutrientAnalysis.js -->
+            <p class="loading-message" id="loadingMessage">Calculating your totals&hellip;</p>
+
+            <div class="analysis-content" id="analysisContent" hidden>
+              <div class="analysis-grid">
+                <div class="nutrient-list" id="nutrientList"></div>
+
+                <aside class="daily-summary" aria-labelledby="dailySummaryHeading">
+                  <strong id="dailySummaryHeading">Daily total</strong>
+                  <output id="energyValue">&ndash;</output>
+                  <span>Kcal selected</span>
+
+                  <div class="flag-count">
+                    <strong id="flaggedCount">0 nutrients</strong>
+                    <span>flagged</span>
+                  </div>
+                </aside>
+              </div>
+
+              <aside class="guideline-source" id="guidelineSource"></aside>
             </div>
 
-            <p class="panel-note">
-              Guideline values follow WHO / MOH reference limits for a
-              2,000 kcal adult diet. The marker on each bar shows where the
-              daily guideline sits.
-            </p>
+            <div class="analysis-error" id="analysisError" role="alert" hidden>
+              <strong>We could not calculate the daily totals.</strong>
+              <p id="analysisErrorMessage"></p>
+              <a href="./US-2.1.html">Return to meal selection</a>
+            </div>
           </div>
 
-          <div class="next-row">
-            <!-- Visual placeholder only; no navigation is attached. -->
-            <button class="next-button" type="button">
-              <span>See the Health Relationship</span>
-              <span class="arrow" aria-hidden="true">→</span>
-            </button>
+          <div class="us22-next-row">
+            <a class="us22-next-button" id="healthLinkButton" href="./US-3.1.html">
+              <span>Trace the health link</span>
+              <span class="us22-arrow" aria-hidden="true">&rarr;</span>
+            </a>
           </div>
+
+          <p class="navigation-status" id="navigationStatus" aria-live="polite"></p>
         </section>
       </main>
     </div>
 
-    <script type="module">
-      import { getState, updateState } from "../js/state.js";
-      import { analyseMeals } from "../js/nutrientAnalysis.js";
-      import { DEFAULT_MEALS } from "../js/mockData.js";
-
-      const NUTRIENT_ORDER = ["sugarG", "saturatedFatG", "sodiumMg"];
-
-      function severityColor(ratio) {
-        if (ratio <= 1) return "#4d8571";
-        if (ratio <= 1.5) return "#f0a92e";
-        return "#e35c50";
-      }
-
-      function formatAmount(value, unit) {
-        return `${Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 })} ${unit}`;
-      }
-
-      function renderNutrientRow(nutrient) {
-        const row = document.createElement("div");
-        row.className = "nutrient-row";
-
-        const color = severityColor(nutrient.ratio);
-        const widthPct = Math.min(nutrient.ratio, 2) * 50;
-        const badgeClass = nutrient.exceeded ? "badge--exceeded" : "badge--ok";
-        const badgeLabel = nutrient.exceeded ? "Exceeded" : "Within Limit";
-
-        row.innerHTML = `
-          <div class="nutrient-row-top">
-            <span class="nutrient-name">
-              ${nutrient.name}
-              <span class="badge ${badgeClass}">${badgeLabel}</span>
-            </span>
-            <span class="nutrient-value">
-              ${formatAmount(nutrient.total, nutrient.unit)}
-              ${nutrient.exceeded ? ` · ${nutrient.ratio}× guideline` : ""}
-            </span>
-          </div>
-          <div class="progress-track">
-            <div class="progress-fill" style="width:${widthPct}%; background:${color};"></div>
-            <div class="progress-marker"></div>
-          </div>
-          <div class="progress-scale">
-            <span>0</span>
-            <span>Guideline: ${formatAmount(nutrient.guideline, nutrient.unit)}</span>
-            <span>${formatAmount(nutrient.guideline * 2, nutrient.unit)}</span>
-          </div>
-        `;
-
-        return row;
-      }
-
-      function render(analysis) {
-        document.getElementById("energyValue").textContent =
-          formatAmount(Math.round(analysis.totals.energyKcal), "kcal");
-
-        const list = document.getElementById("nutrientList");
-        list.innerHTML = "";
-        NUTRIENT_ORDER.forEach((key) => {
-          list.appendChild(renderNutrientRow(analysis.nutrients[key]));
-        });
-
-        const priorityCard = document.getElementById("priorityNutrientText");
-        if (analysis.priorityNutrient) {
-          priorityCard.innerHTML =
-            `${analysis.priorityNutrient.name}<br>` +
-            `${analysis.priorityNutrient.ratio}× the daily guideline`;
-        } else {
-          priorityCard.innerHTML = "No nutrient exceeded its guideline today.";
-        }
-
-        document.getElementById("disclaimerText").textContent = analysis.disclaimer;
-      }
-
-      const state = getState();
-      const meals = state.meals || DEFAULT_MEALS;
-      const analysis = analyseMeals(meals);
-
-      updateState({ meals, dailyAnalysis: analysis });
-
-      render(analysis);
-    </script>
+    <script type="module" src="../js/US-2.2.js"></script>
   </body>
 </html>

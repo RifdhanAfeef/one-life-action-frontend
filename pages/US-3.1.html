@@ -3,143 +3,124 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>One Life Action — Nutrient–Health Relationship</title>
+    <meta
+      name="description"
+      content="Understand how flagged nutrients relate to health risk factors and Malaysia's mortality context."
+    />
+    <title>One Life Action - Why It Matters</title>
+
+    <!-- Shared stylesheet -->
     <link rel="stylesheet" href="../styles.css" />
+    <!-- Page specific stylesheet. -->
+    <link rel="stylesheet" href="../css/US-3.1.css" />
   </head>
 
   <body>
-    <div class="app">
-      <!-- Shared Header -->
-      <header class="header">
-        <div class="brand">
+    <div class="app us31-app" id="us31App">
+      <header class="header us31-header">
+        <a class="brand us31-brand" href="#" aria-label="One Life Action home">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>One Life Action</span>
-        </div>
+        </a>
+
         <div class="step-pill">Step 4 of 6</div>
       </header>
 
-      <main class="page">
-        <!-- Left Side -->
-        <section class="left-column">
-          <p class="eyebrow">4. Health Relationship</p>
+      <main class="us31-layout">
+        <section class="us31-intro" aria-labelledby="pageTitle">
+          <p class="us31-eyebrow">4 &middot; Why it matters</p>
 
-          <h1 id="pageTitle">What This Nutrient Is Linked To</h1>
+          <h1 id="pageTitle">Warnings are not arbitrary numbers.</h1>
 
-          <p class="subtext">
-            These are associations identified in national health research —
-            not a diagnosis. They explain why this nutrient was flagged, not
-            what will happen to you.
-          </p>
-
-          <aside class="info-card info-card--yellow">
-            <span class="card-label">Priority Nutrient</span>
-            <strong id="priorityNutrientText">Calculating…</strong>
-          </aside>
-
-          <aside class="info-card info-card--rose">
-            <strong id="contributorText">Calculating…</strong>
-          </aside>
-
-          <!-- Back Button; Not Connected yet -->
-          <button class="back-button" type="button">← Back to Nutrient Totals</button>
-        </section>
-
-        <!-- Right Side Container -->
-        <section class="right-column">
-          <div class="content-panel">
-            <h2 id="panelTitle">Conditions Linked to This Nutrient</h2>
-
-            <div class="relationship-list" id="relationshipList">
-              <!-- Relationship cards are rendered here by js/nutrientAnalysis.js -->
-            </div>
-
-            <p class="panel-note">
-              Source: NHMS 2023 / WHO. Wording is deliberately non-causal —
-              "linked to" and "associated with", never "causes".
+          <div class="us31-copy">
+            <p>One meal does not decide your future.</p>
+            <p>
+              Repeated choices can influence risk factors linked to the
+              patterns observed in population data.
+            </p>
+            <p>
+              Each flagged nutrient is traced through an associated risk
+              factor to a condition in the age-group pattern.
             </p>
           </div>
 
-          <div class="next-row">
-            <!-- Visual placeholder only; no navigation is attached. -->
-            <button class="next-button" type="button">
-              <span>See a Realistic Swap</span>
-              <span class="arrow" aria-hidden="true">→</span>
-            </button>
+          <aside class="strongest-link" id="strongestLink" hidden>
+            <strong>Your strongest link</strong>
+            <output id="priorityName">&ndash;</output>
+            <p id="prioritySummary"></p>
+            <p class="contributor-summary" id="contributorSummary"></p>
+          </aside>
+
+          <aside class="no-priority-card" id="noPriorityCard" hidden>
+            <strong>No priority nutrient</strong>
+            <p>
+              None of the selected totals exceeded the available guideline
+              references.
+            </p>
+          </aside>
+
+          <a class="us31-back-button" href="./US-2.2.html">
+            <span aria-hidden="true">&larr;</span>
+            Back to daily totals
+          </a>
+        </section>
+
+        <section class="us31-results-column" aria-labelledby="healthLinkHeading">
+          <div class="us31-panel" id="healthPanel" aria-busy="true">
+            <div class="panel-heading">
+              <h2 id="healthLinkHeading">
+                Nutrient <span aria-hidden="true">&rarr;</span> Associated risk
+                factor <span aria-hidden="true">&rarr;</span> Linked mortality
+                context
+              </h2>
+              <p>
+                These chains explain relevance. They are not a diagnosis or
+                proof that one nutrient causes a disease.
+              </p>
+            </div>
+
+            <p class="loading-message" id="loadingMessage">
+              Preparing the health links&hellip;
+            </p>
+
+            <div class="health-content" id="healthContent" hidden>
+              <div
+                class="relationship-list"
+                id="relationshipList"
+                role="list"
+              ></div>
+
+              <div class="empty-relationships" id="emptyRelationships" hidden>
+                <strong>No exceeded nutrient needs to be traced.</strong>
+                <p>
+                  You can still continue to see whether an optional small swap
+                  is available.
+                </p>
+              </div>
+
+              <aside class="relationship-note" id="relationshipNote"></aside>
+              <p class="source-note" id="sourceNote"></p>
+            </div>
+
+            <div class="health-error" id="healthError" role="alert" hidden>
+              <strong>We could not load the health explanation.</strong>
+              <p id="healthErrorMessage"></p>
+              <a href="./US-2.2.html">Return to daily totals</a>
+            </div>
           </div>
+
+          <div class="us31-next-row">
+            <a class="us31-next-button" id="swapButton" href="./US-4.1.html">
+              <span>Find one realistic swap</span>
+              <span class="us31-arrow" aria-hidden="true">&rarr;</span>
+            </a>
+          </div>
+
+          <p class="navigation-status" id="navigationStatus" aria-live="polite"></p>
         </section>
       </main>
     </div>
 
-    <script type="module">
-      import { getState } from "../js/state.js";
-      import {
-        analyseMeals,
-        findHighestContributingMeal,
-        getNutrientCondition,
-      } from "../js/nutrientAnalysis.js";
-      import { DEFAULT_MEALS } from "../js/mockData.js";
-
-      function renderNoPriority() {
-        document.getElementById("pageTitle").textContent = "No Priority Nutrient Today";
-        document.getElementById("panelTitle").textContent = "Nothing to Explain Yet";
-        document.getElementById("priorityNutrientText").textContent =
-          "None of your nutrients exceeded their guideline.";
-        document.getElementById("contributorText").textContent =
-          "Choose meals that exceed a guideline on Step 2 to see a relationship here.";
-      }
-
-      function renderRelationshipCard(condition) {
-        const card = document.createElement("article");
-        card.className = "relationship-card";
-
-        const mortalityTag = condition.cause_of_death
-          ? `<span class="mortality-tag">Also recorded as a leading cause of death: ${condition.cause_of_death}</span>`
-          : "";
-
-        card.innerHTML = `
-          <h3>${condition.condition_name}</h3>
-          <p>${condition.mechanism}</p>
-          ${mortalityTag}
-        `;
-
-        return card;
-      }
-
-      function render(analysis) {
-        const priority = analysis.priorityNutrient;
-
-        if (!priority) {
-          renderNoPriority();
-          return;
-        }
-
-        document.getElementById("pageTitle").textContent = `What ${priority.name} Is Linked To`;
-        document.getElementById("panelTitle").textContent = `Conditions Linked to ${priority.name}`;
-
-        document.getElementById("priorityNutrientText").innerHTML =
-          `${priority.name}<br>${priority.total.toLocaleString(undefined, { maximumFractionDigits: 1 })} ${priority.unit} · ${priority.ratio}× the daily guideline`;
-
-        const highestMeal = findHighestContributingMeal(analysis.selectedMeals, priority.key);
-        document.getElementById("contributorText").innerHTML =
-          `${capitalise(highestMeal.slot)} — ${highestMeal.dish.name}<br>` +
-          `contributed the most ${priority.name.toLowerCase()} among your selected meals.`;
-
-        const conditions = getNutrientCondition(priority.key);
-        const list = document.getElementById("relationshipList");
-        list.innerHTML = "";
-        conditions.forEach((condition) => {
-          list.appendChild(renderRelationshipCard(condition));
-        });
-      }
-
-      function capitalise(word) {
-        return word.charAt(0).toUpperCase() + word.slice(1);
-      }
-
-      const state = getState();
-      const analysis = state.dailyAnalysis || analyseMeals(state.meals || DEFAULT_MEALS);
-
-      render(analysis);
-    </script>
+    <script type="module" src="../js/US-3.1.js"></script>
   </body>
 </html>
