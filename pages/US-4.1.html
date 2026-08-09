@@ -3,133 +3,112 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>One Life Action — Your Swap</title>
-    <link rel="stylesheet" href="styles.css" />
+    <meta
+      name="description"
+      content="Choose one approved, realistic food swap based on the selected meals."
+    />
+    <title>One Life Action - Your Swap</title>
+
+    <!-- Shared stylesheet -->
+    <link rel="stylesheet" href="../styles.css" />
+    <!-- Page specific stylesheet. -->
+    <link rel="stylesheet" href="../css/US-4.1.css" />
   </head>
 
   <body>
-    <div class="app">
-      <header class="header">
-        <div class="brand">
+    <div class="app us41-app" id="us41App">
+      <header class="header us41-header">
+        <a class="brand us41-brand" href="#" aria-label="One Life Action home">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>One Life Action</span>
-        </div>
+        </a>
+
         <div class="step-pill">Step 5 of 6</div>
       </header>
 
-      <main class="page">
-        <section class="left-column">
-          <p class="eyebrow">5 · YOUR SWAP</p>
+      <main class="us41-layout">
+        <section class="us41-intro" aria-labelledby="pageTitle">
+          <p class="us41-eyebrow">5 &middot; Your swaps</p>
 
-          <h1>Change the biggest pressure point first.</h1>
+          <h1 id="pageTitle">Change the biggest pressure point first.</h1>
 
-          <p class="subtext">
-            The recommender ranks your daily totals, finds the dish
-            contributing most to your priority nutrient, then looks up one
-            approved swap for it.
+          <p class="us41-subtext">
+            The recommender ranks your totals, finds the dish contributing most
+            to the priority nutrient, and looks up a familiar approved swap.
           </p>
 
-          <aside class="info-card info-card--yellow">
-            <span class="card-label">WHY THIS DISH</span>
-            <strong id="why-dish-text">Loading…</strong>
+          <aside class="why-card" id="whyCard">
+            <strong>Why this dish</strong>
+            <p id="whyDishText">Preparing your recommendation&hellip;</p>
           </aside>
 
-          <aside class="info-card info-card--rose">
-            <strong>
-              This is one controlled recommendation from the approved
-              swap table, not a generated suggestion.
-            </strong>
+          <aside class="controlled-note">
+            Recommendations come from the controlled swap table. The interface
+            does not invent replacements.
           </aside>
 
-          <button class="back-button" type="button">
-            ← Back to health risk explanation
-          </button>
+          <a class="us41-back-button" href="./US-3.1.html">
+            <span aria-hidden="true">&larr;</span>
+            Back to health link
+          </a>
         </section>
 
-        <section class="right-column">
-          <div class="content-panel">
-            <h2>Your recommended swap</h2>
-
-            <div class="stat-strip">
-              <div class="stat-chip">
-                <span class="stat-label">Priority nutrient</span>
-                <span class="stat-value" id="stat-priority-nutrient">—</span>
-              </div>
-              <div class="stat-chip">
-                <span class="stat-label">Contribution</span>
-                <span class="stat-value" id="stat-contribution">—</span>
-              </div>
-              <div class="stat-chip">
-                <span class="stat-label">Meal slot</span>
-                <span class="stat-value" id="stat-meal-slot">—</span>
-              </div>
+        <section class="us41-results-column" aria-labelledby="swapHeading">
+          <div class="us41-panel" id="swapPanel" aria-busy="true">
+            <div class="panel-heading">
+              <h2 id="swapHeading">Choose one small, familiar swap</h2>
+              <p>Every displayed option must be approved in the swap table.</p>
             </div>
 
-            <div class="relationship-list" id="swap-card-container"></div>
-
-            <p class="panel-note" id="no-swap-note" style="display: none">
-              No validated swap is currently available for this dish. We
-              won't invent a replacement — this is shown as-is.
+            <p class="loading-message" id="loadingMessage">
+              Looking for an approved swap&hellip;
             </p>
+
+            <div class="swap-content" id="swapContent" hidden>
+              <fieldset class="swap-options" id="swapOptions">
+                <legend class="visually-hidden">Available approved swaps</legend>
+              </fieldset>
+
+              <aside class="projected-change" id="projectedChange" hidden>
+                <strong>Projected daily change</strong>
+                <div class="projected-values">
+                  <span id="projectedNutrient">&ndash;</span>
+                  <b id="projectedBefore">&ndash;</b>
+                  <span aria-hidden="true">&rarr;</span>
+                  <b id="projectedAfter">&ndash;</b>
+                  <span id="projectedReduction"></span>
+                </div>
+              </aside>
+
+              <aside class="no-swap-state" id="noSwapState" hidden>
+                <strong>No approved swap is currently available.</strong>
+                <p>
+                  The system will not invent a replacement. Return to meal
+                  selection to try a different set of dishes.
+                </p>
+                <a href="./US-2.1.html">Return to meal selection</a>
+              </aside>
+            </div>
+
+            <div class="swap-error" id="swapError" role="alert" hidden>
+              <strong>We could not load a swap recommendation.</strong>
+              <p id="swapErrorMessage"></p>
+              <a href="./US-3.1.html">Return to the health explanation</a>
+            </div>
           </div>
 
-          <div class="next-row">
-            <button class="next-button" type="button">
-              <span>See the measurable effect</span>
-              <span class="arrow" aria-hidden="true">→</span>
-            </button>
+          <div class="us41-next-row">
+            <a class="us41-next-button" id="applySwapButton" href="./US-4.2.html">
+              <span>Apply selected swap</span>
+              <span class="us41-arrow" aria-hidden="true">&rarr;</span>
+            </a>
           </div>
+
+          <p class="navigation-status" id="navigationStatus" aria-live="polite"></p>
         </section>
       </main>
     </div>
 
-    <script>
-      async function getSwapRecommendation() {
-      }
-
-      const nutrientLabels = { sugar: "Sugar", satFat: "Saturated fat", sodium: "Sodium" };
-
-      function render(data) {
-        document.getElementById("stat-priority-nutrient").textContent =
-          nutrientLabels[data.priorityNutrient] || data.priorityNutrient;
-        document.getElementById("stat-contribution").textContent =
-          `${data.contribution}${data.unit}`;
-        document.getElementById("stat-meal-slot").textContent = data.mealSlot;
-
-        document.getElementById("why-dish-text").textContent =
-          `${data.dishName} (${data.mealSlot}) contributes the most ` +
-          `${(nutrientLabels[data.priorityNutrient] || data.priorityNutrient).toLowerCase()} ` +
-          `of your selected meals — ${data.contribution}${data.unit} on its own.`;
-
-        const container = document.getElementById("swap-card-container");
-        const noSwapNote = document.getElementById("no-swap-note");
-
-        if (!data.swap) {
-          container.innerHTML = "";
-          noSwapNote.style.display = "block";
-          return;
-        }
-
-        noSwapNote.style.display = "none";
-        container.innerHTML = `
-          <article class="relationship-card">
-            <h3>${data.swap.swapTo} instead of ${data.dishName}</h3>
-            <p>${data.swap.reason}</p>
-            <span class="mortality-tag">
-              −${data.swap.delta}${data.unit} ${(nutrientLabels[data.priorityNutrient] || "").toLowerCase()}
-            </span>
-          </article>
-        `;
-      }
-
-      getSwapRecommendation()
-        .then(render)
-        .catch((err) => {
-          document.getElementById("why-dish-text").textContent =
-            "Couldn't load your swap recommendation. Please try again.";
-          console.error(err);
-        });
-    </script>
+    <script type="module" src="../js/US-4.1.js"></script>
   </body>
 </html>
-

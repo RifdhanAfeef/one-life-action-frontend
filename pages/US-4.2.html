@@ -3,131 +3,137 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>One Life Action — Your Result</title>
-    <link rel="stylesheet" href="styles.css" />
+    <meta
+      name="description"
+      content="Review the measurable daily change produced by one approved food swap."
+    />
+    <title>One Life Action - Your Result</title>
+
+    <!-- Shared stylesheet -->
+    <link rel="stylesheet" href="../styles.css" />
+    <!-- Page specific stylesheet. -->
+    <link rel="stylesheet" href="../css/US-4.2.css" />
   </head>
 
   <body>
-    <div class="app">
-      <header class="header">
-        <div class="brand">
+    <div class="app us42-app" id="us42App">
+      <header class="header us42-header">
+        <a class="brand us42-brand" href="#" aria-label="One Life Action home">
           <span class="brand-dot" aria-hidden="true"></span>
           <span>One Life Action</span>
-        </div>
+        </a>
+
         <div class="step-pill">Step 6 of 6</div>
       </header>
 
-      <main class="page">
-        <section class="left-column">
-          <p class="eyebrow">6 · YOUR RESULT</p>
+      <main class="us42-layout">
+        <section class="us42-intro" aria-labelledby="pageTitle">
+          <p class="us42-eyebrow">6 &middot; Your result</p>
 
-          <h1>One realistic change. A measurable new day.</h1>
+          <h1 id="pageTitle">One realistic change. A measurable new day.</h1>
 
-          <p class="subtext">
-            This shows the recalculated total after applying the swap —
-            not a promise of a health outcome.
+          <p class="us42-subtext">
+            The result shows a recalculated daily estimate after the selected
+            swap. It is not a promise of a health outcome.
           </p>
 
-          <aside class="info-card info-card--yellow">
-            <span class="card-label">HONEST RESULT</span>
-            <strong>
-              Not a "Perfect Meal Plan,"<br />
-              but a realistic, measurable improvement.
-            </strong>
+          <aside class="result-summary" id="resultSummary" hidden>
+            <strong id="summaryLabel">Your new daily total</strong>
+            <div class="summary-values">
+              <output id="summaryAfter">&ndash;</output>
+              <span id="summaryBefore"></span>
+            </div>
+            <p id="summaryReduction"></p>
+            <p class="guideline-status" id="guidelineStatus"></p>
           </aside>
 
-          <aside class="info-card info-card--rose">
-            <strong id="status-note-text">Loading…</strong>
+          <aside class="honest-result">
+            <strong>Honest result</strong>
+            <p>
+              Not a perfect meal plan, but a realistic and measurable positive
+              change.
+            </p>
           </aside>
 
-          <button class="back-button" type="button">← Back to your swap</button>
+          <div class="us42-left-actions">
+            <a class="us42-back-button" href="./US-4.1.html">
+              <span aria-hidden="true">&larr;</span>
+              Back to your swap
+            </a>
+            <a class="start-again-button" href="./US-1.1.html">Start again</a>
+          </div>
         </section>
 
-        <section class="right-column">
-          <div class="content-panel">
-            <h2>Before vs after</h2>
+        <section class="us42-results-column" aria-labelledby="resultHeading">
+          <div class="us42-panel" id="resultPanel" aria-busy="true">
+            <div class="panel-heading">
+              <h2 id="resultHeading">Your result card</h2>
+              <p>Download it as a reminder for your next working day.</p>
+            </div>
 
-            <div class="nutrient-list" id="priority-nutrient-row"></div>
-
-            <p class="panel-note">
-              Recalculated day total estimate — other nutrients update to
-              reflect the replacement dish.
+            <p class="loading-message" id="loadingMessage">
+              Recalculating your selected day&hellip;
             </p>
 
-            <div class="stat-strip" id="other-nutrients-strip"></div>
+            <div class="result-content" id="resultContent" hidden>
+              <div class="result-grid">
+                <article class="action-card" id="actionCard">
+                  <div class="action-card__brand">
+                    <span aria-hidden="true"></span>
+                    <strong>My One Life Action</strong>
+                  </div>
+
+                  <p class="action-text" id="actionText"></p>
+
+                  <div class="action-divider"></div>
+
+                  <strong class="action-metric-label" id="actionMetricLabel">
+                    My new daily total
+                  </strong>
+                  <p class="action-metric">
+                    <output id="actionMetricAfter">&ndash;</output>
+                    <span id="actionMetricBefore"></span>
+                  </p>
+
+                  <p class="action-footer">
+                    One familiar swap. One realistic first step.
+                  </p>
+                </article>
+
+                <div class="result-tools">
+                  <button class="download-button" id="downloadButton" type="button">
+                    <span>Download result card</span>
+                    <span aria-hidden="true">&rarr;</span>
+                  </button>
+
+                  <button class="copy-button" id="copyButton" type="button">
+                    Copy action text
+                  </button>
+
+                  <section class="totals-card" aria-labelledby="totalsHeading">
+                    <h3 id="totalsHeading">Recalculated day total estimate</h3>
+                    <dl id="totalsList"></dl>
+                    <p id="totalsReduction"></p>
+                  </section>
+                </div>
+              </div>
+
+              <aside class="result-disclaimer" id="resultDisclaimer"></aside>
+              <p class="source-note" id="sourceNote"></p>
+            </div>
+
+            <div class="result-error" id="resultError" role="alert" hidden>
+              <strong>We could not calculate the swap result.</strong>
+              <p id="resultErrorMessage"></p>
+              <a href="./US-4.1.html">Return to swap selection</a>
+            </div>
           </div>
 
-          <div class="next-row">
-            <button class="next-button" type="button">
-              <span>Download result card</span>
-              <span class="arrow" aria-hidden="true">→</span>
-            </button>
-          </div>
+          <p class="navigation-status" id="navigationStatus" aria-live="polite"></p>
         </section>
       </main>
     </div>
 
-    <script>
-      async function getSwapEffect() {
-      }
-
-      function render(data) {
-        const pctOfLimitAfter = Math.min((data.after / data.limit) * 100, 100);
-        const fillColor = data.stillAboveGuideline ? "var(--coral)" : "var(--sage)";
-
-        document.getElementById("priority-nutrient-row").innerHTML = `
-          <div>
-            <div class="nutrient-row-top">
-              <span class="nutrient-name">
-                ${data.nutrient}
-                <span class="badge ${data.stillAboveGuideline ? "badge--exceeded" : "badge--ok"}">
-                  ${data.stillAboveGuideline ? "Still above guideline" : "Within guideline"}
-                </span>
-              </span>
-              <span class="nutrient-value">
-                ${data.before}${data.unit} → ${data.after}${data.unit}
-              </span>
-            </div>
-            <div class="progress-track">
-              <div class="progress-fill" style="width:${pctOfLimitAfter}%; background:${fillColor};"></div>
-              <div class="progress-marker"></div>
-            </div>
-            <div class="progress-scale">
-              <span>0${data.unit}</span>
-              <span>Guideline: ${data.limit}${data.unit}</span>
-            </div>
-          </div>
-        `;
-
-        document.getElementById("status-note-text").textContent = data.stillAboveGuideline
-          ? `Still above the ~${data.limit}${data.unit} guideline, but reduced by ` +
-            `${data.absoluteReduction}${data.unit} (${data.percentReduction.toFixed(1)}%). This is an ` +
-            `improvement, not a resolved issue.`
-          : `Now within the ~${data.limit}${data.unit} guideline — reduced by ` +
-            `${data.absoluteReduction}${data.unit} (${data.percentReduction.toFixed(1)}%).`;
-
-        document.getElementById("other-nutrients-strip").innerHTML = (data.otherNutrients || [])
-          .map((n) => {
-            const changed = n.before !== n.after;
-            return `
-              <div class="stat-chip">
-                <span class="stat-label">${n.label}</span>
-                <span class="stat-value">
-                  ${n.before}${n.unit}${changed ? ` → ${n.after}${n.unit}` : ""}
-                </span>
-              </div>
-            `;
-          })
-          .join("");
-      }
-
-      getSwapEffect()
-        .then(render)
-        .catch((err) => {
-          document.getElementById("status-note-text").textContent =
-            "Couldn't load your result. Please try again.";
-          console.error(err);
-        });
-    </script>
+    <script type="module" src="../js/US-4.2.js"></script>
   </body>
 </html>
