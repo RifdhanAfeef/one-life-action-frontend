@@ -12,6 +12,7 @@ const bmiResult = document.querySelector("#bmiResult");
 const bmiValue = document.querySelector("#bmiValue");
 const bmiCategory = document.querySelector("#bmiCategory");
 const bmiRange = document.querySelector("#bmiRange");
+const NORMAL_BMI_RANGE = "18.5–22.9";
 
 const figuresView = document.querySelector("#figuresView");
 const chartView = document.querySelector("#chartView");
@@ -26,8 +27,15 @@ const chartAgeBand = document.querySelector("#chartAgeBand");
 const mortalityBars = document.querySelector("#mortalityBars");
 const navigationStatus = document.querySelector("#navigationStatus");
 
-/*Later, replace getHealthContext() with a POST request to: /assessment/health-context*/
-
+/*
+ * STATIC PROTOTYPE DATA ONLY.
+ *
+ * Later, replace getHealthContext() with a POST request to:
+ *   /assessment/health-context
+ *
+ * Keep the returned object in the same UI-friendly shape so the rendering
+ * functions below do not need to change.
+ */
 const mortalityByAgeBand = {
   "18-29": [
     { cause: "Transport accidents", percentage: 24.1 },
@@ -109,17 +117,17 @@ function validateProfile(profile) {
     errors.push({ field: ageBandInput, message: "Select an age group." });
   }
 
-  if (!Number.isFinite(profile.heightCm) || profile.heightCm < 100 || profile.heightCm > 300) {
+  if (!Number.isFinite(profile.heightCm) || profile.heightCm < 100 || profile.heightCm > 250) {
     errors.push({
       field: heightInput,
-      message: "Enter a height between 100 cm and 300 cm.",
+      message: "Enter a height between 100 cm and 250 cm.",
     });
   }
 
-  if (!Number.isFinite(profile.weightKg) || profile.weightKg < 15 || profile.weightKg > 700) {
+  if (!Number.isFinite(profile.weightKg) || profile.weightKg < 25 || profile.weightKg > 350) {
     errors.push({
       field: weightInput,
-      message: "Enter a weight between 15 kg and 700 kg.",
+      message: "Enter a weight between 25 kg and 350 kg.",
     });
   }
 
@@ -155,7 +163,6 @@ function classifyBmi(bmi) {
  * Integration seam: this is the only function that needs to change when the
  * backend request/response contract is finalised.
  */
-
 async function getHealthContext(profile) {
   const bmi = calculateBmi(profile.heightCm, profile.weightKg);
 
@@ -186,8 +193,9 @@ function renderBmi(context) {
   bmiCategory.textContent = context.bmiCategory;
 
   bmiRange.textContent =
-    `BMI category range: ${categoryRanges[context.bmiCategory]}`;
+    `MOH Recommended BMI range: ${NORMAL_BMI_RANGE}`;
 
+  // Used by CSS to select the appropriate colour scheme.
   bmiResult.dataset.category = context.bmiCategory
     .toLowerCase()
     .replaceAll(" ", "-");
@@ -300,7 +308,7 @@ patternButton.addEventListener("click", () => {
 });
 
 foodButton.addEventListener("click", () => {
-    window.location.href = "./US-2.1.html";
+      window.location.href = "./US-2.1.html";
 });
 
 createPeopleGrid();

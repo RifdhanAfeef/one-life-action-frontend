@@ -358,8 +358,7 @@ function handleTotalsRequest() {
 
   selectionWarning.hidden = true;
   saveSelectionsForNextPage();
-  navigationStatus.textContent =
-    "All four meals are selected. Daily totals navigation will be linked later.";
+  window.location.href = "./US-2.2.html";
 }
 
 async function initialisePage() {
