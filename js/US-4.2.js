@@ -1,10 +1,3 @@
-const APP_CONFIG = {
-  // Keep "mock" while the backend is unavailable. Change to "api" to connect.
-  dataMode: "mock",
-  apiBaseUrl: "http://localhost:3000",
-  swapEffectEndpoint: "/assessment/swap-effect",
-};
-
 const STORAGE_KEYS = {
   selectedMeals: "oneLifeAction.selectedMeals",
   dailyAnalysis: "oneLifeAction.dailyAnalysis",
@@ -165,75 +158,12 @@ function createResult(selectedSwap, dailyAnalysis = null) {
   };
 }
 
-function normaliseApiResult(payload, selectedSwap, dailyAnalysis) {
-  const responseData = payload.data ?? payload;
-  const beforeTotals =
-    responseData.beforeTotals ??
-    responseData.before_totals ??
-    selectedSwap.beforeTotals ??
-    dailyAnalysis?.totals;
-  const afterTotals = responseData.afterTotals ?? responseData.after_totals;
-
-  if (!beforeTotals || !afterTotals) {
-    throw new Error("The backend response did not include before-and-after totals.");
-  }
-
-  return createResult(
-    {
-      ...selectedSwap,
-      beforeTotals,
-      afterTotals,
-      priorityNutrient:
-        responseData.priorityNutrient ??
-        responseData.priority_nutrient ??
-        selectedSwap.priorityNutrient,
-      source:
-        responseData.source ??
-        "Swap effect returned by the backend.",
-    },
-    dailyAnalysis,
-  );
-}
-
-async function requestSwapEffect(selectedSwap, meals, dailyAnalysis) {
-  /*
-   * Backend integration point. The backend should validate the approved swap,
-   * retrieve both dishes, recalculate every nutrient and return the totals.
-   */
-  const requestBody = {
-    swapId: selectedSwap.id,
-    dishes: meals.map((meal) => ({
-      dishId: meal.id,
-      mealSlot: meal.slot,
-      quantity: Number(meal.quantity ?? 1),
-    })),
-  };
-
-  const response = await fetch(
-    `${APP_CONFIG.apiBaseUrl}${APP_CONFIG.swapEffectEndpoint}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(`The swap-effect request failed (${response.status}).`);
-  }
-
-  return normaliseApiResult(
-    await response.json(),
-    selectedSwap,
-    dailyAnalysis,
-  );
-}
-
+/*
+ * No separate swap-effect endpoint exists. US-4.1 already stored the
+ * backend-computed before/after totals on the selected swap (from the same
+ * meal-assessment response), so the result here is just derived locally.
+ */
 async function getSwapEffect(selectedSwap, meals, dailyAnalysis) {
-  if (APP_CONFIG.dataMode === "api") {
-    return requestSwapEffect(selectedSwap, meals, dailyAnalysis);
-  }
-
   return createResult(selectedSwap, dailyAnalysis);
 }
 

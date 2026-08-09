@@ -1,13 +1,7 @@
-const APP_CONFIG = {
-  // Keep "mock" while the backend is unavailable. Change to "api" to connect.
-  dataMode: "mock",
-  apiBaseUrl: "http://localhost:3000",
-  swapRecommendationEndpoint: "/assessment/swap-recommendation",
-};
-
 const STORAGE_KEYS = {
   selectedMeals: "oneLifeAction.selectedMeals",
   dailyAnalysis: "oneLifeAction.dailyAnalysis",
+  recommendation: "oneLifeAction.recommendation",
   healthRiskAnalysis: "oneLifeAction.healthRiskAnalysis",
   selectedSwap: "oneLifeAction.selectedSwap",
 };
@@ -109,12 +103,15 @@ function readFlowState() {
   const analysis = readStoredJson(STORAGE_KEYS.dailyAnalysis, null);
   const meals = readStoredJson(STORAGE_KEYS.selectedMeals, []);
   const healthContext = readStoredJson(STORAGE_KEYS.healthRiskAnalysis, null);
+  const recommendation = readStoredJson(STORAGE_KEYS.recommendation, null);
 
   return {
     analysis: analysis && typeof analysis === "object" ? analysis : null,
     meals: Array.isArray(meals) ? meals : [],
     healthContext:
       healthContext && typeof healthContext === "object" ? healthContext : null,
+    recommendation:
+      recommendation && typeof recommendation === "object" ? recommendation : null,
   };
 }
 
@@ -279,113 +276,67 @@ function buildMockRecommendation(analysis, meals, healthContext) {
   };
 }
 
-function normaliseSwapOption(option, beforeTotals, index) {
-  const nutrientDelta =
-    option.nutrientDelta ?? option.nutrient_delta ?? option.deltaByNutrient ?? {};
+/*
+ * The swap and its impact are not their own endpoint — both come back inside
+ * the same POST /assessment/meal-assessment response that US-2.2 already
+ * requested (recommendation.recommendation / .impact / .revisedTotals), so
+ * this page reshapes what US-2.2 stored instead of calling the backend again.
+ * The backend returns at most one approved swap, so it is rendered as a
+ * single pre-selected option in the existing options list.
+ */
+function buildRecommendationFromApi(recommendation, analysis, meals) {
+  const priorityNutrient = normalisePriorityNutrient(recommendation.priorityNutrient);
+  const highestContributor = priorityNutrient
+    ? findHighestContributor(meals, priorityNutrient.key)
+    : null;
 
-  return {
-    id:
-      option.id ??
-      option.swapId ??
-      option.swap_id ??
-      option.toDishId ??
-      option.to_dish_id ??
-      `approved-swap-${index + 1}`,
-    fromDishId: option.fromDishId ?? option.from_dish_id,
-    fromDishName:
-      option.fromDishName ?? option.from_dish_name ?? option.swapFrom,
-    toDishId: option.toDishId ?? option.to_dish_id,
-    toDishName: option.toDishName ?? option.to_dish_name ?? option.swapTo,
-    mealSlot: option.mealSlot ?? option.meal_slot,
-    reason: option.reason ?? option.description ?? "Approved database swap.",
-    nutrientDelta,
-    afterTotals:
-      option.afterTotals ??
-      option.after_totals ??
-      totalAfterDelta(beforeTotals, nutrientDelta),
-  };
-}
-
-function normaliseApiRecommendation(payload, analysis, meals, healthContext) {
-  const responseData = payload.data ?? payload;
-  const beforeTotals =
-    responseData.beforeTotals ?? responseData.before_totals ?? analysis.totals;
-  const rawOptions = responseData.options ?? responseData.swaps ??
-    (responseData.swap ? [responseData.swap] : []);
-
-  if (!Array.isArray(rawOptions)) {
-    throw new Error("The backend response did not include a valid swap result.");
+  if (!recommendation.recommendationRequired) {
+    return {
+      priorityNutrient: null,
+      highestContributor: null,
+      beforeTotals: analysis.totals,
+      options: [],
+      source: recommendation.message ?? "No assessed nutrient exceeds its guideline value.",
+    };
   }
 
-  const priorityNutrient =
-    normalisePriorityNutrient(
-      responseData.priorityNutrient ??
-        responseData.priority_nutrient ??
-        getPriorityNutrient(analysis, healthContext),
-    );
+  if (!recommendation.swapAvailable || !recommendation.recommendation) {
+    return {
+      priorityNutrient,
+      highestContributor,
+      beforeTotals: analysis.totals,
+      options: [],
+      source: recommendation.message ?? "No validated swap is currently available for this dish.",
+    };
+  }
+
+  const swap = recommendation.recommendation;
+  const reduction = Math.abs(recommendation.impact?.absoluteReduction ?? 0);
+
+  const option = {
+    id: String(swap.swapId),
+    fromDishId: swap.originalDish.dishId,
+    fromDishName: swap.originalDish.name,
+    toDishId: swap.replacementDish.dishId,
+    toDishName: swap.replacementDish.name,
+    mealSlot: swap.mealSlot,
+    reason: swap.explanation ?? swap.reason,
+    nutrientDelta: priorityNutrient ? { [priorityNutrient.key]: -reduction } : {},
+    afterTotals: recommendation.revisedTotals ?? analysis.totals,
+  };
 
   return {
     priorityNutrient,
-    highestContributor: normaliseContributor(
-      responseData.highestContributor ??
-        responseData.highest_contributor ??
-        findHighestContributor(meals, priorityNutrient?.key),
-    ),
-    beforeTotals,
-    options: rawOptions.map((option, index) =>
-      normaliseSwapOption(option, beforeTotals, index),
-    ),
-    source:
-      responseData.source ??
-      "Approved swap recommendation returned by the backend.",
+    highestContributor,
+    beforeTotals: analysis.totals,
+    options: [option],
+    source: "Approved swap recommendation from the backend's swap table.",
   };
 }
 
-async function requestSwapRecommendation(analysis, meals, healthContext) {
-  /*
-   * Backend integration point. Confirm the endpoint and request field names.
-   * The browser sends identifiers only; the backend validates them and queries
-   * the approved swap table.
-   */
-  const priorityNutrient = getPriorityNutrient(analysis, healthContext);
-  const highestContributor =
-    healthContext?.highestContributor ??
-    findHighestContributor(meals, priorityNutrient?.key);
-
-  const requestBody = {
-    priorityNutrientKey: priorityNutrient?.key ?? null,
-    contributorDishId: highestContributor?.dishId ?? null,
-    dishes: meals.map((meal) => ({
-      dishId: meal.id,
-      mealSlot: meal.slot,
-      quantity: Number(meal.quantity ?? 1),
-    })),
-  };
-
-  const response = await fetch(
-    `${APP_CONFIG.apiBaseUrl}${APP_CONFIG.swapRecommendationEndpoint}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    },
-  );
-
-  if (!response.ok) {
-    throw new Error(`The swap recommendation request failed (${response.status}).`);
-  }
-
-  return normaliseApiRecommendation(
-    await response.json(),
-    analysis,
-    meals,
-    healthContext,
-  );
-}
-
-async function getSwapRecommendation(analysis, meals, healthContext) {
-  if (APP_CONFIG.dataMode === "api") {
-    return requestSwapRecommendation(analysis, meals, healthContext);
+async function getSwapRecommendation(analysis, meals, healthContext, recommendation) {
+  if (recommendation) {
+    return buildRecommendationFromApi(recommendation, analysis, meals);
   }
 
   return buildMockRecommendation(analysis, meals, healthContext);
@@ -558,7 +509,7 @@ async function initialisePage() {
 
   try {
     renderRecommendation(
-      await getSwapRecommendation(analysis, meals, state.healthContext),
+      await getSwapRecommendation(analysis, meals, state.healthContext, state.recommendation),
     );
   } catch (error) {
     console.error(error);

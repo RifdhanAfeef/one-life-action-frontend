@@ -27,41 +27,8 @@ const chartAgeBand = document.querySelector("#chartAgeBand");
 const mortalityBars = document.querySelector("#mortalityBars");
 const navigationStatus = document.querySelector("#navigationStatus");
 
-/*
- * STATIC PROTOTYPE DATA ONLY.
- *
- * Later, replace getHealthContext() with a POST request to:
- *   /assessment/health-context
- *
- * Keep the returned object in the same UI-friendly shape so the rendering
- * functions below do not need to change.
- */
-const mortalityByAgeBand = {
-  "18-29": [
-    { cause: "Transport accidents", percentage: 24.1 },
-    { cause: "Cancer", percentage: 8.1 },
-    { cause: "Ischaemic heart disease", percentage: 5.3 },
-    { cause: "Pneumonia", percentage: 4.9 },
-  ],
-  "30-44": [
-    { cause: "Ischaemic heart disease", percentage: 17.8 },
-    { cause: "Stroke", percentage: 14.0 },
-    { cause: "Diabetes", percentage: 10.0 },
-    { cause: "Cancer", percentage: 8.0 },
-  ],
-  "45-59": [
-    { cause: "Ischaemic heart disease", percentage: 17.6 },
-    { cause: "Cancer", percentage: 12.1 },
-    { cause: "Stroke", percentage: 6.9 },
-    { cause: "Diabetes", percentage: 5.5 },
-  ],
-  "60+": [
-    { cause: "Ischaemic heart disease", percentage: 16.3 },
-    { cause: "Pneumonia", percentage: 12.1 },
-    { cause: "Stroke", percentage: 8.5 },
-    { cause: "Diabetes", percentage: 5.3 },
-  ],
-};
+const HEALTH_CONTEXT_ENDPOINT =
+  "https://one-life-action-backend.vercel.app/assessment/health-context";
 
 const categoryRanges = {
   Underweight: "0.0-18.4",
@@ -159,17 +126,26 @@ function classifyBmi(bmi) {
   return "Obese";
 }
 
-/*
- * Integration seam: this is the only function that needs to change when the
- * backend request/response contract is finalised.
- */
 async function getHealthContext(profile) {
-  const bmi = calculateBmi(profile.heightCm, profile.weightKg);
+  const response = await fetch(HEALTH_CONTEXT_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(profile),
+  });
+
+  const payload = await response.json();
+
+  if (!response.ok || !payload.success) {
+    throw new Error(payload.message ?? `Could not calculate your health context (${response.status}).`);
+  }
 
   return {
-    bmi: Number(bmi.toFixed(1)),
-    bmiCategory: classifyBmi(bmi),
-    mortality: mortalityByAgeBand[profile.ageBand],
+    bmi: payload.healthContext.bmi,
+    bmiCategory: payload.healthContext.category,
+    mortality: payload.mortalityContext.leadingCauses.map((item) => ({
+      cause: item.name,
+      percentage: item.percentage,
+    })),
   };
 }
 
@@ -277,12 +253,19 @@ async function handleFormSubmit(event) {
 
   if (errors.length > 0) return;
 
-  currentProfile = profile;
-  currentHealthContext = await getHealthContext(profile);
+  try {
+    currentProfile = profile;
+    currentHealthContext = await getHealthContext(profile);
 
-  renderBmi(currentHealthContext);
-  renderFigures(currentProfile, currentHealthContext);
-  setInterfaceState("figures");
+    renderBmi(currentHealthContext);
+    renderFigures(currentProfile, currentHealthContext);
+    setInterfaceState("figures");
+  } catch (error) {
+    console.error(error);
+    currentProfile = null;
+    currentHealthContext = null;
+    showValidationErrors([{ field: ageBandInput, message: error.message }]);
+  }
 }
 
 function resetResultsAfterInputChange(event) {
