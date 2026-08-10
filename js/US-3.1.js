@@ -222,18 +222,23 @@ function createMockHealthContext(analysis, meals) {
   };
 }
 
-/*
- * The health-relationship data is not its own endpoint — it comes back
- * inside the same POST /assessment/meal-assessment response that US-2.2
- * already requested (recommendation.healthRelationship), so this page just
- * reshapes what US-2.2 stored rather than calling the backend again.
- */
 function getContributorFromRecommendation(recommendation) {
-  if (recommendation.recommendation) {
+  const swapRecords = Array.isArray(recommendation)
+    ? recommendation
+    : Array.isArray(
+          recommendation.recommendations ?? recommendation.recommendation,
+        )
+      ? recommendation.recommendations ?? recommendation.recommendation
+      : recommendation.recommendations ?? recommendation.recommendation
+        ? [recommendation.recommendations ?? recommendation.recommendation]
+        : [];
+  const firstSwap = swapRecords[0];
+
+  if (firstSwap?.originalDish) {
     return {
-      mealSlot: recommendation.recommendation.mealSlot,
-      dishId: recommendation.recommendation.originalDish.dishId,
-      dishName: recommendation.recommendation.originalDish.name,
+      mealSlot: firstSwap.mealSlot,
+      dishId: firstSwap.originalDish.dishId,
+      dishName: firstSwap.originalDish.name,
     };
   }
 
@@ -249,7 +254,7 @@ function getContributorFromRecommendation(recommendation) {
 }
 
 function buildContextFromRecommendation(recommendation) {
-  if (!recommendation.recommendationRequired) {
+  if (recommendation.recommendationRequired === false) {
     return {
       priorityNutrient: null,
       highestContributor: null,
@@ -260,19 +265,37 @@ function buildContextFromRecommendation(recommendation) {
   }
 
   const priorityNutrient = recommendation.priorityNutrient;
-  const relationships = (recommendation.healthRelationship ?? []).map((row) => ({
-    nutrientKey: priorityNutrient.key,
-    nutrientName: priorityNutrient.name,
-    riskFactor: row.mechanism,
-    condition: row.condition_name,
-    mortalityContext: row.cause_of_death ?? "Not separately recorded as a leading cause of death",
-  }));
+  const suppliedRelationships = recommendation.healthRelationship;
+  const relationshipRows = Array.isArray(suppliedRelationships)
+    ? suppliedRelationships
+    : suppliedRelationships
+      ? [suppliedRelationships]
+      : [];
+  const relationships = relationshipRows.map((row) => {
+    const condition =
+      row.condition_name ?? row.condition ?? "Condition context unavailable";
+
+    return {
+      nutrientKey: priorityNutrient?.key ?? row.nutrient,
+      nutrientName: priorityNutrient?.name ?? row.nutrient,
+      riskFactor:
+        row.mechanism ??
+        row.riskFactor ??
+        row.explanation ??
+        "Associated risk factor",
+      condition,
+      mortalityContext:
+        row.cause_of_death ??
+        row.mortalityContext ??
+        `Population context related to ${condition}`,
+    };
+  });
 
   return {
     priorityNutrient,
     highestContributor: getContributorFromRecommendation(recommendation),
     relationships,
-    source: recommendation.healthRelationship?.[0]?.source ?? "NHMS 2023 / WHO",
+    source: relationshipRows[0]?.source ?? "NHMS 2023 / WHO",
     disclaimer:
       "These links describe associations and do not calculate personal risk.",
   };

@@ -23,11 +23,7 @@ const NUTRIENT_DEFINITIONS = [
   { key: "saturatedFatG", name: "Saturated fat", unit: "g" },
 ];
 
-/*
- * Used only when US-2.2 is opened directly, with no US-2.1 selection in
- * session storage. These are real dish IDs from the live catalogue
- * (GET /assessment/dishes) so the page still exercises the real API.
- */
+
 const STANDALONE_MOCK_MEALS = [
   { slot: "breakfast", id: 1191, name: "Roti canai (2 pc, with curry)", energyKcal: 1241, sugarG: 11.02, saturatedFatG: 20.17, sodiumMg: 3381 },
   { slot: "lunch", id: 843, name: "Mala xiang guo (soup)", energyKcal: 1445, sugarG: 10.94, saturatedFatG: 32.4, sodiumMg: 5954 },
@@ -119,12 +115,7 @@ function analyseMealsLocally(meals) {
   return createAnalysis(calculateTotals(meals), DEFAULT_GUIDELINES);
 }
 
-/*
- * The real backend already returns each nutrient fully compared against its
- * guideline (name, total, guideline, unit, exceeded, ratio) instead of raw
- * totals, so there is no local recalculation here — just reshape the keyed
- * object into the array NUTRIENT_DEFINITIONS/createNutrientRow expect.
- */
+
 function normaliseApiAssessment(dailyAnalysis) {
   const nutrients = NUTRIENT_DEFINITIONS.map((definition) => ({
     ...definition,

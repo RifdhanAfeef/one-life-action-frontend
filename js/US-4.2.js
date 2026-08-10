@@ -158,11 +158,7 @@ function createResult(selectedSwap, dailyAnalysis = null) {
   };
 }
 
-/*
- * No separate swap-effect endpoint exists. US-4.1 already stored the
- * backend-computed before/after totals on the selected swap (from the same
- * meal-assessment response), so the result here is just derived locally.
- */
+
 async function getSwapEffect(selectedSwap, meals, dailyAnalysis) {
   return createResult(selectedSwap, dailyAnalysis);
 }
@@ -250,15 +246,6 @@ function renderError(error) {
   copyButton.disabled = true;
 }
 
-function escapeXml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
-}
-
 function wrapText(value, maximumCharacters = 29) {
   const words = value.split(/\s+/);
   const lines = [];
@@ -277,41 +264,133 @@ function wrapText(value, maximumCharacters = 29) {
   return lines;
 }
 
-function downloadResultCard() {
+function drawRoundedRectangle(context, x, y, width, height, radius) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+
+  context.beginPath();
+  context.moveTo(x + safeRadius, y);
+  context.lineTo(x + width - safeRadius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  context.lineTo(x + width, y + height - safeRadius);
+  context.quadraticCurveTo(
+    x + width,
+    y + height,
+    x + width - safeRadius,
+    y + height,
+  );
+  context.lineTo(x + safeRadius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  context.lineTo(x, y + safeRadius);
+  context.quadraticCurveTo(x, y, x + safeRadius, y);
+  context.closePath();
+}
+
+function createResultCardCanvas(result, scale = 2) {
+  const width = 540;
+  const height = 760;
+  const canvas = document.createElement("canvas");
+  canvas.width = width * scale;
+  canvas.height = height * scale;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("The browser could not create the image canvas.");
+  }
+
+  context.scale(scale, scale);
+
+  context.fillStyle = "#fffdf8";
+  context.fillRect(0, 0, width, height);
+  drawRoundedRectangle(context, 0, 0, width, height, 36);
+  context.fillStyle = "#173a5b";
+  context.fill();
+
+  context.beginPath();
+  context.arc(76, 72, 22, 0, Math.PI * 2);
+  context.fillStyle = "#e45d52";
+  context.fill();
+
+  context.fillStyle = "#f3e6e3";
+  context.font = "700 14px Arial, sans-serif";
+  context.fillText("MY ONE LIFE ACTION", 112, 79);
+
+  const actionLines = wrapText(result.actionText);
+  context.fillStyle = "#ffffff";
+  context.font = "700 34px Arial, sans-serif";
+  actionLines.forEach((line, index) => {
+    context.fillText(line, 64, 170 + index * 42);
+  });
+
+  const metricY = 310 + Math.max(0, actionLines.length - 1) * 42;
+  context.beginPath();
+  context.moveTo(64, metricY);
+  context.lineTo(476, metricY);
+  context.strokeStyle = "rgba(255, 255, 255, 0.24)";
+  context.lineWidth = 1;
+  context.stroke();
+
+  const priority = result.priorityNutrient;
+  context.fillStyle = "#f4b842";
+  context.font = "700 13px Arial, sans-serif";
+  context.fillText(
+    `MY NEW DAILY ${String(priority.name).toUpperCase()}`,
+    64,
+    metricY + 54,
+  );
+
+  const afterText = formatAmount(priority.after, priority.unit);
+  context.fillStyle = "#ffffff";
+  context.font = "700 48px Arial, sans-serif";
+  context.fillText(afterText, 64, metricY + 112);
+
+  const afterWidth = context.measureText(afterText).width;
+  context.fillStyle = "#d7e1e8";
+  context.font = "700 17px Arial, sans-serif";
+  context.fillText(
+    `↓ from ${formatAmount(priority.before, priority.unit)}`,
+    64 + afterWidth + 18,
+    metricY + 106,
+  );
+
+  context.fillStyle = "#ffffff";
+  context.font = "700 15px Arial, sans-serif";
+  context.fillText(
+    "One familiar swap. One realistic first step.",
+    64,
+    700,
+  );
+
+  return canvas;
+}
+
+async function downloadResultCard() {
   if (!currentResult) return;
 
-  const priority = currentResult.priorityNutrient;
-  const lines = wrapText(currentResult.actionText);
-  const textLines = lines
-    .map(
-      (line, index) =>
-        `<tspan x="64" dy="${index === 0 ? 0 : 42}">${escapeXml(line)}</tspan>`,
-    )
-    .join("");
-  const metricY = 310 + Math.max(0, lines.length - 1) * 42;
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="540" height="760" viewBox="0 0 540 760">
-      <rect width="540" height="760" rx="36" fill="#173a5b"/>
-      <circle cx="76" cy="72" r="22" fill="#e45d52"/>
-      <text x="112" y="79" fill="#f3e6e3" font-family="Arial, sans-serif" font-size="14" font-weight="700">MY ONE LIFE ACTION</text>
-      <text x="64" y="170" fill="#ffffff" font-family="Arial, sans-serif" font-size="34" font-weight="700">${textLines}</text>
-      <line x1="64" y1="${metricY}" x2="476" y2="${metricY}" stroke="#ffffff" stroke-opacity="0.24"/>
-      <text x="64" y="${metricY + 54}" fill="#f4b842" font-family="Arial, sans-serif" font-size="13" font-weight="700">MY NEW DAILY ${escapeXml(priority.name.toUpperCase())}</text>
-      <text x="64" y="${metricY + 112}" fill="#ffffff" font-family="Arial, sans-serif" font-size="48" font-weight="700">${escapeXml(formatAmount(priority.after, priority.unit))}</text>
-      <text x="64" y="700" fill="#d7e1e8" font-family="Arial, sans-serif" font-size="15">One familiar swap. One realistic first step.</text>
-    </svg>`;
+  downloadButton.disabled = true;
+  navigationStatus.textContent = "Preparing your image result card…";
 
-  const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "one-life-action-result.svg";
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  try {
+    const canvas = createResultCardCanvas(currentResult);
+    const imageDataUrl = canvas.toDataURL("image/jpeg", 0.95);
+    if (!imageDataUrl.startsWith("data:image/jpeg") || imageDataUrl.length < 1000) {
+      throw new Error("The browser returned an empty card image.");
+    }
 
-  navigationStatus.textContent = "Result card downloaded.";
+    const link = document.createElement("a");
+    link.href = imageDataUrl;
+    link.download = "one-life-action-result-v2.jpg";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    navigationStatus.textContent = "JPEG result card downloaded.";
+  } catch (error) {
+    console.error("The image result card could not be generated.", error);
+    navigationStatus.textContent =
+      "The image could not be generated. Please try again.";
+  } finally {
+    downloadButton.disabled = false;
+  }
 }
 
 async function copyActionText() {
