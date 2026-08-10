@@ -205,9 +205,16 @@ function createSearchView(slot) {
     if (!matchedDish) return false;
 
     selections.set(slot.id, matchedDish);
-    renderMealCard(slot);
-    updateSummary();
-    updateWarningIfVisible();
+
+    // Defer the card swap: replacing `input` synchronously while it's still
+    // dispatching its own input/change event races Chrome's blur handling
+    // and throws "replaceChildren ... moved in a blur event handler".
+    queueMicrotask(() => {
+      renderMealCard(slot);
+      updateSummary();
+      updateWarningIfVisible();
+    });
+
     return true;
   }
 
@@ -331,6 +338,8 @@ function updateSummary() {
   });
 }
 
+const MIN_REQUIRED_MEALS = 2;
+
 function getMissingSlots() {
   return mealSlots.filter((slot) => !selections.has(slot.id));
 }
@@ -343,20 +352,16 @@ function joinMealNames(labels) {
 }
 
 function showMissingMealWarning() {
-  const missingSlots = getMissingSlots();
-
-  if (missingSlots.length === 0) {
+  if (selections.size >= MIN_REQUIRED_MEALS) {
     selectionWarning.hidden = true;
     return;
   }
 
-  const missingNames = missingSlots.map((slot) => slot.label);
+  const missingNames = getMissingSlots().map((slot) => slot.label);
   const joinedNames = joinMealNames(missingNames);
-  const verb = missingNames.length === 1 ? "is" : "are";
 
-  warningTitle.textContent = `${joinedNames} ${verb} still empty`;
-  warningMessage.textContent =
-    "Please ensure all four meals are selected before continuing.";
+  warningTitle.textContent = "Select at least two meals";
+  warningMessage.textContent = `Please select at least ${MIN_REQUIRED_MEALS} meals before continuing (still need: ${joinedNames}).`;
   selectionWarning.hidden = false;
 }
 
@@ -366,10 +371,12 @@ function updateWarningIfVisible() {
 }
 
 function saveSelectionsForNextPage() {
-  const selectedMeals = mealSlots.map((slot) => ({
-    slot: slot.id,
-    ...selections.get(slot.id),
-  }));
+  const selectedMeals = mealSlots
+    .filter((slot) => selections.has(slot.id))
+    .map((slot) => ({
+      slot: slot.id,
+      ...selections.get(slot.id),
+    }));
 
   sessionStorage.setItem("oneLifeAction.selectedMeals", JSON.stringify(selectedMeals));
 }
@@ -378,11 +385,10 @@ function handleTotalsRequest() {
   warningHasBeenRequested = true;
   navigationStatus.textContent = "";
 
-  const missingSlots = getMissingSlots();
-
-  if (missingSlots.length > 0) {
+  if (selections.size < MIN_REQUIRED_MEALS) {
     showMissingMealWarning();
-    document.querySelector(`#${missingSlots[0].id}MealSearch`)?.focus();
+    const firstMissing = getMissingSlots()[0];
+    document.querySelector(`#${firstMissing.id}MealSearch`)?.focus();
     return;
   }
 
