@@ -300,6 +300,7 @@ button {
   font-weight: 800;
   line-height: 1.32;
   letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
 }
 
 .action-divider {
@@ -317,6 +318,7 @@ button {
 .action-metric {
   margin: 10px 0 0;
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   gap: 12px;
 }
@@ -356,13 +358,20 @@ button {
 }
 
 .download-button {
+  position: relative;
   border: 0;
   background: var(--navy);
   color: var(--white);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 18px;
+  text-align: center;
+}
+
+.download-button > span:last-child {
+  position: absolute;
+  right: 24px;
 }
 
 .download-button:hover {

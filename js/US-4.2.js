@@ -12,6 +12,13 @@ const TOTAL_DEFINITIONS = [
   { key: "sodiumMg", label: "Sodium", unit: "mg" },
 ];
 
+const NUTRIENT_UNITS = {
+  energyKcal: " kcal",
+  sugarG: "g",
+  saturatedFatG: "g",
+  sodiumMg: "mg",
+};
+
 const MOCK_SELECTED_SWAP = {
   id: "swap-teh-o-kosong",
   fromDishId: 3,
@@ -90,8 +97,9 @@ function formatNumber(value, maximumFractionDigits = 1) {
   });
 }
 
-function formatAmount(value, unit) {
-  return `${formatNumber(value)}${unit}`;
+function formatAmount(value, unit = "") {
+  const safeUnit = typeof unit === "string" && unit !== "undefined" ? unit : "";
+  return `${formatNumber(value)}${safeUnit}`;
 }
 
 function totalAfterDelta(beforeTotals, delta = {}) {
@@ -106,10 +114,23 @@ function totalAfterDelta(beforeTotals, delta = {}) {
 function normalisePriorityNutrient(priority) {
   if (!priority) return null;
 
+  const key = priority.key ?? priority.nutrientKey ?? priority.nutrient_key;
+  const identifier = `${key ?? ""} ${priority.name ?? ""}`.toLowerCase();
+  const inferredUnit = identifier.includes("sodium")
+    ? "mg"
+    : identifier.includes("energy") || identifier.includes("kcal")
+      ? " kcal"
+      : identifier.includes("sugar") || identifier.includes("fat")
+        ? "g"
+        : "";
+
   return {
-    key: priority.key ?? priority.nutrientKey ?? priority.nutrient_key,
+    key,
     name: priority.name ?? priority.nutrientName ?? priority.nutrient_name,
-    unit: priority.unit,
+    unit:
+      typeof priority.unit === "string" && priority.unit !== "undefined"
+        ? priority.unit
+        : NUTRIENT_UNITS[key] ?? inferredUnit,
     guideline: Number(
       priority.guideline ?? priority.guidelineValue ?? priority.guideline_value ?? 0,
     ),
@@ -246,22 +267,67 @@ function renderError(error) {
   copyButton.disabled = true;
 }
 
-function wrapText(value, maximumCharacters = 29) {
-  const words = value.split(/\s+/);
+function splitLongWord(context, word, maximumWidth) {
+  const pieces = [];
+  let piece = "";
+
+  [...word].forEach((character) => {
+    const candidate = `${piece}${character}`;
+    if (piece && context.measureText(candidate).width > maximumWidth) {
+      pieces.push(piece);
+      piece = character;
+    } else {
+      piece = candidate;
+    }
+  });
+
+  if (piece) pieces.push(piece);
+  return pieces;
+}
+
+function wrapText(context, value, maximumWidth) {
+  const words = String(value).trim().split(/\s+/).filter(Boolean);
   const lines = [];
   let line = "";
 
   words.forEach((word) => {
-    const candidate = line ? `${line} ${word}` : word;
-    if (candidate.length > maximumCharacters && line) {
-      lines.push(line);
-      line = word;
-    } else {
-      line = candidate;
-    }
+    const pieces =
+      context.measureText(word).width > maximumWidth
+        ? splitLongWord(context, word, maximumWidth)
+        : [word];
+
+    pieces.forEach((piece) => {
+      const candidate = line ? `${line} ${piece}` : piece;
+      if (line && context.measureText(candidate).width > maximumWidth) {
+        lines.push(line);
+        line = piece;
+      } else {
+        line = candidate;
+      }
+    });
   });
+
   if (line) lines.push(line);
   return lines;
+}
+
+function fitActionText(context, value, maximumWidth, maximumHeight) {
+  for (let fontSize = 34; fontSize >= 22; fontSize -= 1) {
+    const lineHeight = Math.ceil(fontSize * 1.24);
+    context.font = `700 ${fontSize}px Arial, sans-serif`;
+    const lines = wrapText(context, value, maximumWidth);
+
+    if (lines.length * lineHeight <= maximumHeight) {
+      return { fontSize, lineHeight, lines };
+    }
+  }
+
+  context.font = "700 22px Arial, sans-serif";
+  return {
+    fontSize: 22,
+    lineHeight: 28,
+    lines: wrapText(context, value, maximumWidth),
+  };
 }
 
 function drawRoundedRectangle(context, x, y, width, height, radius) {
@@ -314,14 +380,17 @@ function createResultCardCanvas(result, scale = 2) {
   context.font = "700 14px Arial, sans-serif";
   context.fillText("MY ONE LIFE ACTION", 112, 79);
 
-  const actionLines = wrapText(result.actionText);
+  const actionStartY = 170;
+  const actionLayout = fitActionText(context, result.actionText, 412, 300);
   context.fillStyle = "#ffffff";
-  context.font = "700 34px Arial, sans-serif";
-  actionLines.forEach((line, index) => {
-    context.fillText(line, 64, 170 + index * 42);
+  context.font = `700 ${actionLayout.fontSize}px Arial, sans-serif`;
+  actionLayout.lines.forEach((line, index) => {
+    context.fillText(line, 64, actionStartY + index * actionLayout.lineHeight);
   });
 
-  const metricY = 310 + Math.max(0, actionLines.length - 1) * 42;
+  const actionBottomY =
+    actionStartY + Math.max(0, actionLayout.lines.length - 1) * actionLayout.lineHeight;
+  const metricY = Math.min(520, Math.max(430, actionBottomY + 54));
   context.beginPath();
   context.moveTo(64, metricY);
   context.lineTo(476, metricY);
@@ -339,15 +408,28 @@ function createResultCardCanvas(result, scale = 2) {
   );
 
   const afterText = formatAmount(priority.after, priority.unit);
+  const beforeText = `↓ from ${formatAmount(priority.before, priority.unit)}`;
+  let metricFontSize = 48;
+  let afterWidth = 0;
+
+  context.font = "700 17px Arial, sans-serif";
+  const beforeWidth = context.measureText(beforeText).width;
+
+  do {
+    context.font = `700 ${metricFontSize}px Arial, sans-serif`;
+    afterWidth = context.measureText(afterText).width;
+    if (afterWidth + beforeWidth + 18 <= 412) break;
+    metricFontSize -= 1;
+  } while (metricFontSize >= 34);
+
   context.fillStyle = "#ffffff";
-  context.font = "700 48px Arial, sans-serif";
+  context.font = `700 ${metricFontSize}px Arial, sans-serif`;
   context.fillText(afterText, 64, metricY + 112);
 
-  const afterWidth = context.measureText(afterText).width;
   context.fillStyle = "#d7e1e8";
   context.font = "700 17px Arial, sans-serif";
   context.fillText(
-    `↓ from ${formatAmount(priority.before, priority.unit)}`,
+    beforeText,
     64 + afterWidth + 18,
     metricY + 106,
   );
@@ -378,7 +460,7 @@ async function downloadResultCard() {
 
     const link = document.createElement("a");
     link.href = imageDataUrl;
-    link.download = "one-life-action-result-v2.jpg";
+    link.download = "one-life-action-result.jpg";
     document.body.appendChild(link);
     link.click();
     link.remove();
