@@ -404,6 +404,21 @@ function restoreSelections() {
   }
 }
 
+function shouldRestoreSelections() {
+  const parameters = new URLSearchParams(window.location.search);
+  return parameters.get("restore") === "1";
+}
+
+function prepareMealSelectionSession() {
+  if (shouldRestoreSelections()) {
+    restoreSelections();
+    return;
+  }
+
+  selections.clear();
+  sessionStorage.removeItem(SELECTIONS_STORAGE_KEY);
+}
+
 function handleTotalsRequest() {
   warningHasBeenRequested = true;
   navigationStatus.textContent = "";
@@ -417,12 +432,19 @@ function handleTotalsRequest() {
 
   selectionWarning.hidden = true;
   saveSelections();
+
+  // Mark this history entry as restorable so the browser Back button also
+  // returns to the user's current meal choices.
+  const returnUrl = new URL(window.location.href);
+  returnUrl.searchParams.set("restore", "1");
+  window.history.replaceState(null, "", returnUrl);
+
   window.location.href = "./US-2.2.html";
 }
 
 async function initialisePage() {
   dishCatalogue = await getDishCatalogue();
-  restoreSelections();
+  prepareMealSelectionSession();
   mealSlots.forEach(renderMealCard);
   updateSummary();
 }
