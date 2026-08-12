@@ -143,6 +143,10 @@
                 role="img"
                 aria-label="100 grey figures representing 100 recorded lives"
               ></div>
+
+              <p class="data-source-note" id="figuresSource">
+                Data source: DOSM mortality data
+              </p>
             </section>
 
             <section id="chartView" aria-labelledby="chartHeading" hidden>
@@ -166,13 +170,18 @@
                 </p>
               </aside>
 
-              <p class="next-hint">
-                Next: connect the pattern to a typical day of Malaysian meals.
+              <p class="data-source-note data-source-note--chart" id="chartSource">
+                Data source: DOSM mortality data
               </p>
             </section>
           </div>
 
           <div class="visual-actions">
+            <button class="chart-back-button" id="chartBackButton" type="button" hidden>
+              <span aria-hidden="true">&larr;</span>
+              <span>Back</span>
+            </button>
+
             <button class="primary-button next-button" id="patternButton" type="button" hidden>
               <span>See mortality pattern</span>
               <span class="button-arrow" aria-hidden="true">&rarr;</span>

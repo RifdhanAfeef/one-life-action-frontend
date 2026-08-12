@@ -81,6 +81,7 @@ const noSwapState = document.querySelector("#noSwapState");
 const swapError = document.querySelector("#swapError");
 const swapErrorMessage = document.querySelector("#swapErrorMessage");
 const whyDishText = document.querySelector("#whyDishText");
+const selectedDishPrompt = document.querySelector("#selectedDishPrompt");
 const applySwapButton = document.querySelector("#applySwapButton");
 const navigationStatus = document.querySelector("#navigationStatus");
 
@@ -535,6 +536,7 @@ function selectOption(optionId) {
   });
 
   renderProjectedChange(option);
+  selectedDishPrompt.textContent = `Your selected dish is ${option.fromDishName}. Below are the recommended swaps:`;
   saveSelectedSwap(option);
   applySwapButton.setAttribute("aria-disabled", "false");
 }
@@ -573,6 +575,8 @@ function renderRecommendation(recommendation) {
   if (hasOptions) {
     selectOption(recommendation.options[0].id);
   } else {
+    selectedDishPrompt.textContent =
+      "No recommended swap is currently available for the selected dishes.";
     selectedOptionId = null;
     sessionStorage.removeItem(STORAGE_KEYS.selectedSwap);
     applySwapButton.setAttribute("aria-disabled", "true");

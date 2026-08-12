@@ -72,7 +72,6 @@ const actionMetricBefore = document.querySelector("#actionMetricBefore");
 const totalsList = document.querySelector("#totalsList");
 const totalsReduction = document.querySelector("#totalsReduction");
 const resultDisclaimer = document.querySelector("#resultDisclaimer");
-const sourceNote = document.querySelector("#sourceNote");
 const downloadButton = document.querySelector("#downloadButton");
 const copyButton = document.querySelector("#copyButton");
 const navigationStatus = document.querySelector("#navigationStatus");
@@ -246,7 +245,6 @@ function renderResult(result) {
     result.percentReduction,
   )}%`;
   resultDisclaimer.textContent = result.disclaimer;
-  sourceNote.textContent = `Source: ${result.source}`;
 
   saveFinalResult(result);
   loadingMessage.hidden = true;

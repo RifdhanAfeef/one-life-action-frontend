@@ -365,6 +365,20 @@ button {
   margin: 48px auto 0;
 }
 
+.data-source-note {
+  margin: 30px 0 0;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.data-source-note--chart {
+  margin-top: 24px;
+  text-align: left;
+  font-weight: 700;
+}
+
 .us11-app[data-state="figures"] .people-grid {
   margin-top: 34px;
 }
@@ -390,7 +404,30 @@ button {
 .visual-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 24px;
   margin-top: 25px;
+}
+
+.visual-actions[data-state="chart"] {
+  justify-content: space-between;
+}
+
+.chart-back-button {
+  border: 0;
+  padding: 14px 0;
+  background: transparent;
+  color: var(--navy);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 800;
+}
+
+.chart-back-button:focus-visible {
+  outline: 3px solid rgba(228, 93, 82, 0.35);
+  outline-offset: 3px;
 }
 
 .next-button {

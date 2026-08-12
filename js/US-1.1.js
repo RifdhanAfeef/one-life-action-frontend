@@ -25,6 +25,9 @@ const patternButton = document.querySelector("#patternButton");
 const foodButton = document.querySelector("#foodButton");
 const chartAgeBand = document.querySelector("#chartAgeBand");
 const mortalityBars = document.querySelector("#mortalityBars");
+const figuresSource = document.querySelector("#figuresSource");
+const chartSource = document.querySelector("#chartSource");
+const chartBackButton = document.querySelector("#chartBackButton");
 const navigationStatus = document.querySelector("#navigationStatus");
 
 const HEALTH_CONTEXT_ENDPOINT =
@@ -142,6 +145,7 @@ async function getHealthContext(profile) {
   return {
     bmi: payload.healthContext.bmi,
     bmiCategory: payload.healthContext.category,
+    mortalitySource: payload.mortalityContext.source ?? "DOSM mortality data",
     mortality: payload.mortalityContext.leadingCauses.map((item) => ({
       cause: item.name,
       percentage: item.percentage,
@@ -184,11 +188,13 @@ function renderFigures(profile, context) {
   summaryAgeBand.textContent = profile.ageBand;
   summaryCause.textContent = topCause.cause;
   summaryPercentage.textContent = `${topCause.percentage.toFixed(1)}%`;
+  figuresSource.textContent = `Data source: ${context.mortalitySource}`;
   paintPeopleGrid(highlightedFigures);
 }
 
 function renderBars(profile, context) {
   chartAgeBand.textContent = profile.ageBand;
+  chartSource.textContent = `Data source: ${context.mortalitySource}`;
   mortalityBars.replaceChildren();
 
   context.mortality.forEach((item, index) => {
@@ -238,6 +244,8 @@ function setInterfaceState(nextState) {
   chartView.hidden = !isChart;
   patternButton.hidden = !isFigures;
   foodButton.hidden = !isChart;
+  chartBackButton.hidden = !isChart;
+  document.querySelector(".visual-actions").dataset.state = nextState;
 
   if (isInitial) {
     paintPeopleGrid(0);
@@ -288,6 +296,11 @@ patternButton.addEventListener("click", () => {
 
   renderBars(currentProfile, currentHealthContext);
   setInterfaceState("chart");
+});
+
+chartBackButton.addEventListener("click", () => {
+  if (!currentProfile || !currentHealthContext) return;
+  setInterfaceState("figures");
 });
 
 foodButton.addEventListener("click", () => {

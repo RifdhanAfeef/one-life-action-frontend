@@ -110,6 +110,7 @@ const mockDishCatalogue = [
 const selections = new Map();
 let dishCatalogue = [];
 let warningHasBeenRequested = false;
+const SELECTIONS_STORAGE_KEY = "oneLifeAction.selectedMeals";
 
 const DISHES_ENDPOINT = "https://one-life-action-backend.vercel.app/assessment/dishes";
 
@@ -200,6 +201,7 @@ function createSearchView(slot) {
     if (!matchedDish) return false;
 
     selections.set(slot.id, matchedDish);
+    saveSelections();
 
     // Defer the card swap: replacing `input` synchronously while it's still
     // dispatching its own input/change event races Chrome's blur handling
@@ -280,6 +282,7 @@ function createSelectedView(slot, dish) {
 
   changeButton.addEventListener("click", () => {
     selections.delete(slot.id);
+    saveSelections();
     renderMealCard(slot);
     updateSummary();
     updateWarningIfVisible();
@@ -365,7 +368,7 @@ function updateWarningIfVisible() {
   showMissingMealWarning();
 }
 
-function saveSelectionsForNextPage() {
+function saveSelections() {
   const selectedMeals = mealSlots
     .filter((slot) => selections.has(slot.id))
     .map((slot) => ({
@@ -373,7 +376,32 @@ function saveSelectionsForNextPage() {
       ...selections.get(slot.id),
     }));
 
-  sessionStorage.setItem("oneLifeAction.selectedMeals", JSON.stringify(selectedMeals));
+  sessionStorage.setItem(SELECTIONS_STORAGE_KEY, JSON.stringify(selectedMeals));
+}
+
+function restoreSelections() {
+  const storedValue = sessionStorage.getItem(SELECTIONS_STORAGE_KEY);
+  if (!storedValue) return;
+
+  try {
+    const storedMeals = JSON.parse(storedValue);
+    if (!Array.isArray(storedMeals)) return;
+
+    storedMeals.forEach((storedMeal) => {
+      const slot = mealSlots.find((item) => item.id === storedMeal.slot);
+      if (!slot || !storedMeal.name) return;
+
+      const catalogueDish = getDishesForSlot(slot.id).find(
+        (dish) =>
+          String(dish.id) === String(storedMeal.id) ||
+          dish.name.toLowerCase() === String(storedMeal.name).toLowerCase(),
+      );
+
+      selections.set(slot.id, catalogueDish ?? storedMeal);
+    });
+  } catch (error) {
+    console.warn("Previously selected meals could not be restored.", error);
+  }
 }
 
 function handleTotalsRequest() {
@@ -388,12 +416,13 @@ function handleTotalsRequest() {
   }
 
   selectionWarning.hidden = true;
-  saveSelectionsForNextPage();
+  saveSelections();
   window.location.href = "./US-2.2.html";
 }
 
 async function initialisePage() {
   dishCatalogue = await getDishCatalogue();
+  restoreSelections();
   mealSlots.forEach(renderMealCard);
   updateSummary();
 }
