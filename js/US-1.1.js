@@ -33,6 +33,12 @@ const navigationStatus = document.querySelector("#navigationStatus");
 const HEALTH_CONTEXT_ENDPOINT =
   "https://one-life-action-backend.vercel.app/assessment/health-context";
 
+const US11_STORAGE_KEYS = {
+  profile: "oneLifeAction.us11Profile",
+  healthContext: "oneLifeAction.us11HealthContext",
+  interfaceState: "oneLifeAction.us11InterfaceState",
+};
+
 const categoryRanges = {
   Underweight: "0.0-18.4",
   Normal: "18.5-22.9",
@@ -44,6 +50,38 @@ const rankLabels = ["Highest recorded", "Second", "Third", "Fourth"];
 
 let currentProfile = null;
 let currentHealthContext = null;
+
+function readStoredJson(key) {
+  const storedValue = sessionStorage.getItem(key);
+  if (!storedValue) return null;
+
+  try {
+    return JSON.parse(storedValue);
+  } catch (error) {
+    console.warn(`Stored value for ${key} could not be restored.`, error);
+    return null;
+  }
+}
+
+function saveInterfaceProgress(interfaceState) {
+  if (!currentProfile || !currentHealthContext) return;
+
+  sessionStorage.setItem(
+    US11_STORAGE_KEYS.profile,
+    JSON.stringify(currentProfile),
+  );
+  sessionStorage.setItem(
+    US11_STORAGE_KEYS.healthContext,
+    JSON.stringify(currentHealthContext),
+  );
+  sessionStorage.setItem(US11_STORAGE_KEYS.interfaceState, interfaceState);
+}
+
+function clearInterfaceProgress() {
+  Object.values(US11_STORAGE_KEYS).forEach((key) => {
+    sessionStorage.removeItem(key);
+  });
+}
 
 function createPeopleGrid() {
   const fragment = document.createDocumentFragment();
@@ -268,6 +306,7 @@ async function handleFormSubmit(event) {
     renderBmi(currentHealthContext);
     renderFigures(currentProfile, currentHealthContext);
     setInterfaceState("figures");
+    saveInterfaceProgress("figures");
   } catch (error) {
     console.error(error);
     currentProfile = null;
@@ -284,6 +323,7 @@ function resetResultsAfterInputChange(event) {
   if (app.dataset.state !== "initial") {
     currentProfile = null;
     currentHealthContext = null;
+    clearInterfaceProgress();
     setInterfaceState("initial");
   }
 }
@@ -296,17 +336,51 @@ patternButton.addEventListener("click", () => {
 
   renderBars(currentProfile, currentHealthContext);
   setInterfaceState("chart");
+  saveInterfaceProgress("chart");
 });
 
 chartBackButton.addEventListener("click", () => {
   if (!currentProfile || !currentHealthContext) return;
   setInterfaceState("figures");
+  saveInterfaceProgress("figures");
 });
 
 foodButton.addEventListener("click", () => {
-      window.location.href = "./US-2.1.html";
+  saveInterfaceProgress("chart");
+  window.location.href = "./US-2.1.html";
 });
 
-createPeopleGrid();
-enableUploadedPersonImage();
-setInterfaceState("initial");
+function restorePreviousChartState() {
+  const parameters = new URLSearchParams(window.location.search);
+  if (parameters.get("view") !== "chart") return false;
+
+  const storedProfile = readStoredJson(US11_STORAGE_KEYS.profile);
+  const storedHealthContext = readStoredJson(US11_STORAGE_KEYS.healthContext);
+
+  if (!storedProfile || !storedHealthContext) return false;
+
+  currentProfile = storedProfile;
+  currentHealthContext = storedHealthContext;
+
+  ageBandInput.value = currentProfile.ageBand;
+  heightInput.value = currentProfile.heightCm;
+  weightInput.value = currentProfile.weightKg;
+
+  renderBmi(currentHealthContext);
+  renderFigures(currentProfile, currentHealthContext);
+  renderBars(currentProfile, currentHealthContext);
+  setInterfaceState("chart");
+  return true;
+}
+
+function initialisePage() {
+  createPeopleGrid();
+  enableUploadedPersonImage();
+
+  if (restorePreviousChartState()) return;
+
+  clearInterfaceProgress();
+  setInterfaceState("initial");
+}
+
+initialisePage();

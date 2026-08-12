@@ -452,7 +452,7 @@ async function initialisePage() {
 totalsButton.addEventListener("click", handleTotalsRequest);
 
 backButton.addEventListener("click", () => {
-  window.location.href = "./US-1.1.html";
+  window.location.href = "./US-1.1.html?view=chart";
 });
 
 initialisePage();
